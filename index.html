@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OW2 ヒーローガイド</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #080e1c;
+      color: #dde6f5;
+      font-family: 'Segoe UI', 'Hiragino Kaku Gothic Pro', sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #111830 0%, #0a1020 100%);
+      border-bottom: 3px solid #f99e1a;
+      padding: 24px 20px;
+      text-align: center;
+    }
+    header h1 { font-size: 2rem; color: #f99e1a; text-shadow: 0 0 24px rgba(249,158,26,0.55); letter-spacing: 3px; }
+    header p  { color: #7a90b8; margin-top: 6px; font-size: 0.95rem; }
+
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 16px; }
+
+    .role-section { margin-bottom: 28px; }
+    .role-label {
+      font-size: 0.82rem; font-weight: 700; letter-spacing: 2px;
+      padding: 5px 14px; border-radius: 4px; display: inline-block; margin-bottom: 12px;
+    }
+    .role-tank .role-label { background: #2d5abf; }
+    .role-dmg  .role-label { background: #c03030; }
+    .role-sup  .role-label { background: #258048; }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+      gap: 8px;
+    }
+    .hero-card {
+      background: #131d35; border: 2px solid transparent;
+      border-radius: 8px; padding: 9px 5px; text-align: center;
+      cursor: pointer; transition: all 0.18s ease;
+    }
+    .hero-card:hover   { border-color: #f99e1a; transform: translateY(-3px); background: #1b2848; }
+    .hero-card.selected{ border-color: #f99e1a; background: #232f55; box-shadow: 0 0 18px rgba(249,158,26,0.45); }
+    .hero-card .h-icon { font-size: 1.9rem; display: block; margin-bottom: 4px; }
+    .hero-card .h-name { font-size: 0.63rem; color: #99aece; font-weight: 600; line-height: 1.3; }
+
+    /* ── Result Panel ── */
+    .result-panel {
+      display: none; background: #0c1525;
+      border: 1px solid #1e2e50; border-radius: 12px;
+      padding: 24px; margin-top: 24px; animation: fadeUp 0.28s ease;
+    }
+    .result-panel.visible { display: block; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+    .sel-hero { display:flex; align-items:center; gap:16px; margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid #1e2e50; }
+    .sel-hero .big-icon { font-size: 3.6rem; }
+    .sel-hero .sel-name  { font-size: 1.8rem; font-weight: 700; color: #f99e1a; }
+    .sel-hero .sel-role  { font-size: 0.85rem; color: #6a84b0; margin-top: 3px; }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 580px) { .info-grid { grid-template-columns: 1fr; } }
+
+    .info-box { background: #131d35; border-radius: 8px; padding: 16px; }
+    .info-box h3 { font-size: 0.9rem; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #1e2e50; }
+    .box-anti h3 { color: #ff6060; }
+    .box-syn  h3 { color: #50d880; }
+
+    .h-list { list-style: none; }
+    .h-list li { display:flex; align-items:flex-start; gap:10px; padding:8px; border-radius:6px; margin-bottom:7px; background:#0c1525; }
+    .h-list li .li-icon { font-size: 1.5rem; flex-shrink: 0; margin-top: 1px; }
+    .h-list li .li-name { font-weight: 700; font-size: 0.85rem; }
+    .h-list li .li-why  { font-size: 0.72rem; color: #7a90b8; margin-top: 2px; line-height: 1.5; }
+    .box-anti .h-list li { border-left: 3px solid #ff6060; }
+    .box-syn  .h-list li { border-left: 3px solid #50d880; }
+
+    /* ── Anti-pick role sub-sections ── */
+    .anti-role-section { margin-bottom: 10px; }
+    .anti-role-section:last-child { margin-bottom: 0; }
+    .anti-role-label {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 1.5px;
+      color: #ff9090; opacity: 0.75; margin-bottom: 5px; padding-left: 2px;
+    }
+
+    .tips-box { margin-top: 18px; background: #131d35; border-radius: 8px; padding: 16px; border-left: 3px solid #f99e1a; }
+    .tips-box h3 { color: #f99e1a; margin-bottom: 8px; font-size: 0.9rem; }
+    .tips-box p  { color: #99aece; font-size: 0.87rem; line-height: 1.7; }
+
+    /* ── Bulletin Board ── */
+    .board-section { margin-top: 18px; background: #131d35; border-radius: 8px; padding: 16px; }
+    .board-section > h3 {
+      font-size: 0.9rem; color: #aabbdd; margin-bottom: 14px;
+      padding-bottom: 8px; border-bottom: 1px solid #1e2e50;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .anon-badge {
+      font-size: 0.65rem; background: #1e2e50; color: #6a84b0;
+      padding: 2px 8px; border-radius: 10px; font-weight: 600; letter-spacing: 1px;
+    }
+
+    .board-posts { margin-bottom: 14px; }
+    .board-post {
+      background: #0c1525; border-radius: 6px; padding: 10px 12px;
+      margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start;
+    }
+    .post-badge {
+      font-size: 0.68rem; padding: 2px 7px; border-radius: 10px;
+      font-weight: 600; flex-shrink: 0; margin-top: 2px; white-space: nowrap;
+    }
+    .badge-anti    { background: rgba(255,96,96,0.15);  color: #ff6060; border: 1px solid rgba(255,96,96,0.4); }
+    .badge-syn     { background: rgba(80,216,128,0.15); color: #50d880; border: 1px solid rgba(80,216,128,0.4); }
+    .badge-comment { background: rgba(170,187,221,0.1); color: #99aece; border: 1px solid rgba(170,187,221,0.3); }
+    .post-body { flex: 1; min-width: 0; }
+    .post-hero { font-size: 0.8rem; font-weight: 700; color: #f99e1a; margin-bottom: 3px; }
+    .post-text { font-size: 0.82rem; color: #99aece; line-height: 1.5; word-break: break-word; }
+    .post-like { display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0; }
+    .like-btn {
+      background: none; border: 1px solid #2a3a5a; border-radius: 4px;
+      color: #5a7aaa; cursor: pointer; padding: 3px 8px; font-size: 0.9rem;
+      transition: all 0.15s; line-height: 1;
+    }
+    .like-btn:hover { border-color: #f99e1a; color: #f99e1a; }
+    .like-btn.liked { border-color: #f99e1a; color: #f99e1a; background: rgba(249,158,26,0.1); }
+    .like-count { font-size: 0.72rem; color: #5a7aaa; }
+
+    .board-form { border-top: 1px solid #1e2e50; padding-top: 14px; }
+    .board-form-title { font-size: 0.8rem; color: #6a84b0; margin-bottom: 10px; }
+    .form-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .board-select, .board-input {
+      background: #0c1525; border: 1px solid #2a3a5a; border-radius: 5px;
+      color: #dde6f5; padding: 7px 10px; font-size: 0.82rem; outline: none;
+    }
+    .board-select:focus, .board-input:focus, .board-textarea:focus { border-color: #f99e1a; }
+    .board-input { flex: 1; min-width: 100px; }
+    .board-textarea {
+      width: 100%; background: #0c1525; border: 1px solid #2a3a5a; border-radius: 5px;
+      color: #dde6f5; padding: 8px 10px; font-size: 0.82rem; resize: vertical;
+      min-height: 62px; outline: none; font-family: inherit; margin-bottom: 8px; display: block;
+    }
+    .board-submit {
+      background: #f99e1a; border: none; border-radius: 5px; color: #080e1c;
+      font-weight: 700; font-size: 0.85rem; padding: 8px 18px; cursor: pointer; transition: background 0.15s;
+    }
+    .board-submit:hover { background: #ffb340; }
+    .board-empty { font-size: 0.82rem; color: #3a4a6a; text-align: center; padding: 18px 0; }
+
+    footer { text-align:center; color:#3a4a6a; font-size:0.75rem; padding:30px 10px; margin-top:20px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚔ OW2 ヒーローガイド</h1>
+  <p>ヒーローを選択 → アンチピック・シナジーを確認</p>
+</header>
+
+<div class="container">
+  <div class="role-section role-tank">
+    <div class="role-label">🛡 TANK</div>
+    <div class="hero-grid" id="grid-tank"></div>
+  </div>
+  <div class="role-section role-dmg">
+    <div class="role-label">⚔ DAMAGE</div>
+    <div class="hero-grid" id="grid-dmg"></div>
+  </div>
+  <div class="role-section role-sup">
+    <div class="role-label">💚 SUPPORT</div>
+    <div class="hero-grid" id="grid-sup"></div>
+  </div>
+
+  <div class="result-panel" id="result-panel">
+    <div class="sel-hero">
+      <span class="big-icon" id="r-icon"></span>
+      <div>
+        <div class="sel-name" id="r-name"></div>
+        <div class="sel-role" id="r-role"></div>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-box box-anti">
+        <h3>⚠ アンチピック（苦手なヒーロー）</h3>
+        <div id="list-anti"></div>
+      </div>
+      <div class="info-box box-syn">
+        <h3>✨ シナジー（相性の良いヒーロー）</h3>
+        <ul class="h-list" id="list-syn"></ul>
+      </div>
+    </div>
+
+    <div class="tips-box">
+      <h3>💡 プレイのコツ</h3>
+      <p id="r-tips"></p>
+    </div>
+
+    <!-- 掲示板 -->
+    <div class="board-section">
+      <h3>💬 コミュニティ掲示板 <span class="anon-badge">匿名</span></h3>
+      <div class="board-posts" id="board-posts"></div>
+      <div class="board-form">
+        <div class="board-form-title">👇 追加情報を投稿する（匿名・いいねが多い順に表示）</div>
+        <div class="form-row">
+          <select id="board-cat" class="board-select">
+            <option value="anti">⚠ アンチピック</option>
+            <option value="syn">✨ シナジー</option>
+            <option value="comment">💬 その他</option>
+          </select>
+          <input id="board-hero" class="board-input" placeholder="ヒーロー名（任意）" maxlength="20" />
+        </div>
+        <textarea id="board-text" class="board-textarea" placeholder="理由やコメントを入力... (200文字まで)" maxlength="200"></textarea>
+        <button type="button" class="board-submit" onclick="submitPost()">投稿する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>OW2 ヒーローガイド — 非公式ファンサイト / Overwatch® は Blizzard Entertainment の登録商標です</footer>
+
+<script>
+// ================================================================
+//  counters  = このヒーローが苦手な相手（アンチピック）
+//  synergies = このヒーローと相性の良い味方（シナジー）
+// ================================================================
+const HEROES = {
+
+  /* ═══════════════ TANK ═══════════════ */
+
+  dva: {
+    name: "D.Va", role: "tank", icon: "🤖",
+    counters: {
+      tank: [
+        { id: "zarya",    why: "バリア中はマトリックスで弾を消せないためパワーが溜まりやすい" },
+        { id: "roadhog",  why: "フックで引き込まれてメカが素早く破壊されやすい" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックでディフェンスマトリックスが完全封印される" },
+        { id: "reaper",   why: "近距離ショットガンでメカを素早く破壊される" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでメカ復帰後の回復を妨害される" },
+        { id: "zenyatta", why: "ディスコードで常に弱体化され続ける" },
+      ],
+    },
+    synergies: [
+      { id: "ana",       why: "ナノブーストで突撃力・生存力が上がる" },
+      { id: "zenyatta",  why: "ディスコードオーブで確実に素早く倒せる" },
+      { id: "genji",     why: "マトリックスでドラゴンブレード中の敵弾を消せる" },
+      { id: "soldier76", why: "バイオティックフィールドでDVaも回復できる" },
+    ],
+    tips: "ディフェンスマトリックスは弾しか消せない（レーザー・近接攻撃は不可）。メカが壊れた後も戦えるが、すぐに安全な場所に退いて復帰しよう。ブースターで急速接近してから近距離攻撃するのが強い。",
+  },
+
+  domina: {
+    name: "ドミナ", role: "tank", icon: "💎",
+    counters: {
+      tank: [
+        { id: "winston",  why: "ジャンプで密着されると長射程ビームが機能しなくなる" },
+        { id: "roadhog",  why: "フックで密着させられてビームの強みが消える" },
+      ],
+      dmg: [
+        { id: "junkrat",  why: "爆発物でバリアアレイのセグメントを個別に素早く破壊される" },
+        { id: "sombra",   why: "ハックでビームとバリア補充スキルが両方封じられる" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでウルト後の回復を妨害される" },
+        { id: "zenyatta", why: "ディスコードで素早くダメージが蓄積される" },
+      ],
+    },
+    synergies: [
+      { id: "symmetra",  why: "同じヴィシュカール出身。シンメトラのタレットと組み合わせが良い" },
+      { id: "ana",       why: "ナノブーストでバリア補充＋ビームが超強化される" },
+      { id: "baptiste",  why: "アンプリフィケーションマトリックスでビーム火力が倍増" },
+      { id: "zenyatta",  why: "ディスコードで素早くダメージを稼げる" },
+    ],
+    tips: "バリアアレイは全体シールドではなくセグメントが個別に破壊されるので、敵の攻撃方向に合わせて向きを調整しよう。チャージアップビームは溜めてから放つと高ダメージ。AoEスキルでバリアを補充できるので積極的に攻撃することが防御にもなる。ウルトはバリアで敵を囲んで爆発させる強力なCC。",
+  },
+
+  doomfist: {
+    name: "ドゥームフィスト", role: "tank", icon: "👊",
+    counters: {
+      tank: [
+        { id: "winston",  why: "テスラキャノンで動きを制限され飛び込みが難しくなる" },
+        { id: "zarya",    why: "スキルダメージをバリアに吸収されパワーゲージを上げられる" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックで全スキルが封じられ完全に無力化される" },
+        { id: "mei",       why: "移動スキル使用中に凍らせてコンボを潰される" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでスキル使用時の回復パッシブを完全封印" },
+        { id: "zenyatta", why: "ディスコードで常に弱体化され飛び込みのリターンが下がる" },
+      ],
+    },
+    synergies: [
+      { id: "kiriko",    why: "スズでCCやアンチヒールを除去して生存力が上がる" },
+      { id: "lucio",     why: "スピードブーストで突撃タイミングを作りやすい" },
+      { id: "ana",       why: "ナノブーストでエンパワードパンチが超強力になる" },
+      { id: "zenyatta",  why: "ディスコードオーブで突撃後に確実に倒せる" },
+    ],
+    tips: "パッシブはスキル使用時にバリアHPが生成される。パワーブロックで近接攻撃を受けるとエンパワードパンチが使える。メテオストライクはCCを無視できるのでアンチヒールからの脱出にも使える。アナのナノブーストとのコンボが強力。",
+  },
+
+  hazard: {
+    name: "ヘイザード", role: "tank", icon: "🦔",
+    counters: {
+      tank: [
+        { id: "winston",  why: "テスラキャノンが移動を制限し壁登りを妨害する" },
+        { id: "mauga",    why: "近距離チェーンガンで継続的に高ダメージを受ける" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックで壁登り含む全スキルが止まり無力化される" },
+        { id: "mei",       why: "氷で高機動な動きを完全封印される" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールで回復パッシブを完全封印される" },
+        { id: "zenyatta", why: "ディスコードで継続的に削られ生存力が落ちる" },
+      ],
+    },
+    synergies: [
+      { id: "kiriko",    why: "スズでアンチヒールやデバフを除去して生存力が上がる" },
+      { id: "ana",       why: "ナノブーストで突撃力が大幅に上がる" },
+      { id: "lucio",     why: "スピードブーストで高機動なスタイルをさらに強化" },
+      { id: "zenyatta",  why: "ディスコードで突撃後に素早く倒せる" },
+    ],
+    tips: "壁登り能力で通常では届かないポジションを取れるユニークなタンク。スパイクで敵の移動を制限するエリア制御が得意。高機動なのでダイブ編成と相性が良い。アナのアンチヒールとソンブラのハックが最大の天敵。",
+  },
+
+  junkerqueen: {
+    name: "ジャンカークイーン", role: "tank", icon: "👑",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックで引き寄せられ近距離で一確されやすい" },
+        { id: "sigma",    why: "グラビトンサージで動きを封じられウルトが無力化される" },
+      ],
+      dmg: [
+        { id: "widowmaker",why: "遠距離から接近を許さずじわじわ削られる" },
+        { id: "sombra",   why: "ハックでランページのアンチヒール付与を封じられる" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールで傷の回復パッシブを完全封印される" },
+        { id: "baptiste", why: "イモータリティでバースト火力コンボを無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "ana",       why: "ナノブースト＋ランページで傷の付与が超強化される" },
+      { id: "lucio",     why: "スピードブーストで積極的な前線展開がしやすい" },
+      { id: "zenyatta",  why: "ディスコードで傷を与えつつ素早く倒せる" },
+      { id: "kiriko",    why: "スズでアンチヒールを除去して回復パッシブを守れる" },
+    ],
+    tips: "カーネイジで傷を与えると傷のダメージでJQ自身が回復するパッシブが強み。ランページ（ウルト）は敵にアンチヒールを付与する最強の妨害ウルト。コマンディングショウトで味方に一時的なHPを付与できる。アナのアンチヒールグレネードが最大の天敵。",
+  },
+
+  mauga: {
+    name: "マウガ", role: "tank", icon: "🦁",
+    counters: {
+      tank: [
+        { id: "sigma",    why: "グラビトンサージで動きを封じられウルトが使いにくい" },
+        { id: "wreckingball", why: "高機動でチェーンガンを当てにくく翻弄される" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中のファラにチェーンガンが当てにくい" },
+        { id: "genji",    why: "デフレクトで弾を反射されて自傷してしまう" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでバーサーカーパッシブの回復を完全封印" },
+        { id: "zenyatta", why: "ディスコードで常に弱体化され回復追いつかなくなる" },
+      ],
+    },
+    synergies: [
+      { id: "kiriko",    why: "スズでケージファイト中を無敵にできる最強コンボ" },
+      { id: "ana",       why: "ナノブースト＋ケージファイトで圧倒的な火力と回復" },
+      { id: "zenyatta",  why: "ディスコードでチェーンガンがより速く削れる" },
+      { id: "lucio",     why: "スピードブーストで接近しやすくなる" },
+    ],
+    tips: "バーサーカーパッシブはクリティカルヒット時に自己回復する。アンチヒールがあると急激に弱くなる。ケージファイト（ウルト）は周囲にフィールドを展開して大ダメージを与えるが逃げにくい。キリコのスズとのコンボで無敵時間を作れる。",
+  },
+
+  orisa: {
+    name: "オリーサ", role: "tank", icon: "🐴",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでジャベリンを消されテラサージが妨害される" },
+        { id: "sigma",    why: "グラビトンでテラサージを完全に無力化される" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックでフォーティファイとジャベリンスピンを封じられる" },
+        { id: "bastion",  why: "圧倒的な高火力でフォーティファイを問わずゴリ押しされる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでテラサージウルト中に止められる" },
+        { id: "baptiste", why: "イモータリティでテラサージの全体引き寄せを無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "bastion",   why: "テラサージ＋バスティオンのコンボが超強力" },
+      { id: "ana",       why: "ナノブースト＋テラサージで確実に団体を倒せる" },
+      { id: "hanzo",     why: "テラサージ＋ドラゴンストライクの鉄板コンボ" },
+      { id: "baptiste",  why: "アンプリフィケーションマトリックスでテラサージが倍の火力" },
+    ],
+    tips: "テラサージ（ウルト）は敵を引き寄せてから大ダメージを与える。フォーティファイ中はCC免疫になりダメージが軽減される。ジャベリンスピンは飛んでくる弾を防げる。バスティオンやアナとのコンボが特に強力。",
+  },
+
+  ramattra: {
+    name: "ラマットラ", role: "tank", icon: "🌑",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでボルトを消されリーチアドバンテージを失う" },
+        { id: "sigma",    why: "グラビトンで止められアナイアレーションが無力化される" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中からブロック射程外を攻撃される" },
+        { id: "widowmaker",why: "遠距離から近づく前にじわじわ削られる" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでネメシスフォームの回復を妨害される" },
+        { id: "baptiste", why: "イモータリティでアナイアレーション（ウルト）を完全無効化" },
+      ],
+    },
+    synergies: [
+      { id: "kiriko",    why: "スズでアナイアレーション中のデバフを除去できる" },
+      { id: "ana",       why: "ナノブースト＋アナイアレーションで超強力なウルトコンボ" },
+      { id: "zenyatta",  why: "ディスコードでネメシスフォームの火力が上がる" },
+      { id: "lucio",     why: "サウンドバリア＋アナイアレーションで生存しながら大ダメージ" },
+    ],
+    tips: "アナイアレーション（ウルト）は周囲の敵に持続ダメージを与え、敵がいる間は無限に続く。オムニックフォームとネメシスフォームを状況に応じて切り替えよう。レイヴナスボルテックスは空中の敵も引き下ろせる。",
+  },
+
+  reinhardt: {
+    name: "ラインハルト", role: "tank", icon: "🛡",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでファイアストライクを消されシールド破壊も速い" },
+        { id: "sigma",    why: "グラビトンサージでアースシャッターを潰される" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中からシールドの届かない角度で安全に攻撃される" },
+        { id: "bastion",  why: "圧倒的な高火力でシールドを素早く破壊される" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでアースシャッター中でも止められる" },
+        { id: "baptiste", why: "イモータリティでアースシャッター→コンボを完全無効化" },
+      ],
+    },
+    synergies: [
+      { id: "ana",       why: "ナノブースト＋アースシャッターが超強力コンボ" },
+      { id: "lucio",     why: "スピードブーストでシールドを前線に押し込める" },
+      { id: "soldier76", why: "シールドの後ろから安全に射撃できる" },
+      { id: "zarya",     why: "お互いバリアで守り合える" },
+    ],
+    tips: "シールドを張りながら前線を押し上げるのが基本。ファイアストライクはシールド越しに打てるので積極的に使おう。アースシャッターは柱や壁の後ろに隠れている敵には当たらない点に注意。アナとのナノコンボが最強のウルトコンボのひとつ。",
+  },
+
+  roadhog: {
+    name: "ロードホッグ", role: "tank", icon: "🐷",
+    counters: {
+      tank: [
+        { id: "orisa",    why: "フォーティファイ中はフックを無視できCCが通らない" },
+        { id: "dva",      why: "マトリックスでフック（射出弾）を消されることもある" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中のファラにフックが届かず一方的に爆撃される" },
+        { id: "bastion",  why: "射程外の高火力連射でスクラップガンが届かず削られる" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールグレネードで自己回復を完全封印される" },
+        { id: "baptiste", why: "イモータリティでフック→ショットガン確殺コンボを無効化" },
+      ],
+    },
+    synergies: [
+      { id: "zenyatta",  why: "フック後にディスコードオーブで確実に倒せる" },
+      { id: "cassidy",   why: "フック後にフラッシュバンで確実にキル" },
+      { id: "ana",       why: "フック後にダート＋グレネードで確殺できる" },
+      { id: "soldier76", why: "フック後にライフルを当てて一気に倒せる" },
+    ],
+    tips: "フック→ショットガン接射→近接のコンボで多くのヒーローを一撃で倒せる。アンチヒールで回復を封じられると非常に弱くなる。機動力がないのでポジション取りが重要。フックは壁の角を利用すると当てやすい。",
+  },
+
+  sigma: {
+    name: "シグマ", role: "tank", icon: "🪐",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでハイパースフィアなどの弾を消される" },
+        { id: "reinhardt", why: "アースシャッターでグラビトン中に止められる" },
+      ],
+      dmg: [
+        { id: "tracer",   why: "素早い動きでバリアの隙を常に突かれる" },
+        { id: "sombra",   why: "ハックでバリア展開とスキルを完全封印される" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでグラビトン使用中に止められる" },
+        { id: "baptiste", why: "イモータリティでグラビトン＋ウルトコンボを完全無効化" },
+      ],
+    },
+    synergies: [
+      { id: "cassidy",   why: "グラビトンサージ＋フラッシュバンのコンボ" },
+      { id: "zenyatta",  why: "ディスコードで素早くダメージを稼げる" },
+      { id: "ana",       why: "ナノブーストでウルトが超強化される" },
+      { id: "hanzo",     why: "グラビトン＋ドラゴンストライクが鉄板コンボ" },
+    ],
+    tips: "グラビトンサージ（ウルト）は単体では弱い。メイのブリザード・ハンゾーのドラゴンストライク・リーパーのデスブロッサムと必ずコンボしよう。キネティックグラスプで弾を吸収しながら回復できる。空中での浮遊が得意。",
+  },
+
+  winston: {
+    name: "ウィンストン", role: "tank", icon: "🦍",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックでジャンプ後に引き込まれて大ダメージを受ける" },
+        { id: "zarya",    why: "バリアで守られながら近距離で反撃される" },
+      ],
+      dmg: [
+        { id: "reaper",   why: "近距離ショットガンが最も刺さり、シャドーステップで追いかけられる" },
+        { id: "mei",      why: "氷でジャンプパックの移動を完全封印される" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでプライマルレイジ中の回復を妨害される" },
+        { id: "baptiste", why: "イモータリティで飛び込み→確殺コンボを無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "tracer",    why: "一緒に飛び込んでバックラインを荒らせる" },
+      { id: "genji",     why: "同時に飛び込んでサポートを孤立させられる" },
+      { id: "ana",       why: "ナノブーストで強化した突撃が非常に強力" },
+      { id: "lucio",     why: "スピードブーストで飛び込みをサポートできる" },
+    ],
+    tips: "ジャンプパックでバックラインに飛び込んでサポートを狙うのが基本スタイル。テスラキャノンは範囲攻撃で避けにくいのが強み。バリアは壁でなく盾として使おう。プライマルレイジ（ウルト）は回復も上がるので緊急時にも使える。",
+  },
+
+  wreckingball: {
+    name: "レッキングボール", role: "tank", icon: "🐹",
+    counters: {
+      tank: [
+        { id: "sigma",    why: "グラビトンサージでロールを止められ完全に無力化される" },
+        { id: "reinhardt", why: "アースシャッターでロール中でも止められる" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックで全スキルが停止し地面に落とされて無力化される" },
+        { id: "cassidy",  why: "フラッシュバンでロール中でも止められる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートがロール中でも当たる" },
+        { id: "baptiste", why: "イモータリティでパイルドライバーコンボを無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "junkrat",   why: "両者ともに混乱を引き起こすカオスコンビ" },
+      { id: "tracer",    why: "一緒にフランクして敵の後方を荒らせる" },
+      { id: "ana",       why: "ナノブースト＋パイルドライバーが強力" },
+      { id: "kiriko",    why: "スズでハックやデバフを除去してくれる" },
+    ],
+    tips: "アダプティブシールドは近くの敵が多いほど最大HPが増加する。パイルドライバーは高所から降下してAoEダメージ。マインフィールド（ウルト）はポイント防衛に強い。ハックで止められると非常に弱くなるので注意。",
+  },
+
+  zarya: {
+    name: "ザリア", role: "tank", icon: "💪",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスで弾を消されてパワーがなかなか溜まらない" },
+        { id: "roadhog",  why: "バリアが切れた瞬間にフックで引き込まれ高ダメージを受ける" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックでバリアとグラビトンが完全封印される" },
+        { id: "pharah",   why: "空中からバリアを消費させてパワーが溜まる前に削られる" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールで回復が止まり長期戦で不利になる" },
+        { id: "baptiste", why: "イモータリティでグラビトンサージのコンボを完全無効化" },
+      ],
+    },
+    synergies: [
+      { id: "mei",       why: "アイスウォールでグラビトンの囲い込みが強くなる" },
+      { id: "reaper",    why: "グラビトン＋デスブロッサムが超強力なコンボ" },
+      { id: "hanzo",     why: "グラビトン＋ドラゴンストライクの鉄板コンボ" },
+      { id: "ana",       why: "ナノブーストでウルト中の火力が爆発的に上がる" },
+    ],
+    tips: "バリアで敵の攻撃を受けるほどパワーゲージが上昇し攻撃力と耐久力が増す。グラビトンサージは必ず他のウルト（メイ・ハンゾー・リーパー）とコンボしよう。味方へのバリアも忘れずに使おう。",
+  },
+
+  /* ═══════════════ DAMAGE ═══════════════ */
+
+  anran: {
+    name: "アンラン", role: "dmg", icon: "🔥",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスで炎スキルを消され距離を詰められる" },
+        { id: "roadhog",  why: "フックで密着させられ燃焼継続戦が機能しない" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックでインフェルノラッシュ含む全スキルが封じられる" },
+        { id: "mei",      why: "氷でインフェルノラッシュを止められ燃焼コンボを崩される" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールで燃焼の効果が大幅低下し継続回復も消える" },
+        { id: "brigitte", why: "防具が燃焼ダメージを吸収して継続ダメージが通りにくい" },
+      ],
+    },
+    synergies: [
+      { id: "zarya",     why: "グラビトンで集まった敵に燃焼を広範囲に広げられる" },
+      { id: "lucio",     why: "スピードブーストでフランクへのアプローチがしやすい" },
+      { id: "kiriko",    why: "スズで突撃中のデバフを除去して生存力を上げる" },
+      { id: "ana",       why: "ナノブーストでウルトの爆発ダメージが超強化される" },
+    ],
+    tips: "パッシブの燃焼で敵を継続ダメージ状態にするのが基本。ダンシングブレイズ中は全ダメージを回避できるので積極的に使おう。ウルトはライブ時は突進爆発、デッド時は自己復活という2段構えが特徴。姉妹のウーヤンとは相性が良い。",
+  },
+
+  ashe: {
+    name: "アッシュ", role: "dmg", icon: "🎩",
+    counters: {
+      tank: [
+        { id: "winston",  why: "ジャンプで一気にスナイパーポジションに詰められる" },
+        { id: "dva",      why: "マトリックスでダイナマイトとライフルを消される" },
+      ],
+      dmg: [
+        { id: "genji",    why: "デフレクトでライフル弾を反射されてやられる" },
+        { id: "tracer",   why: "素早い動きで照準を合わせにくく翻弄される" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止められてから集中攻撃される" },
+        { id: "zenyatta", why: "ディスコードで照準関係なく削られやすくなる" },
+      ],
+    },
+    synergies: [
+      { id: "ana",       why: "スリープダートで止まった敵にダイナマイトが当てやすい" },
+      { id: "lucio",     why: "スピードブーストで安全なポジションへ移動しやすい" },
+      { id: "reinhardt", why: "シールドで守られながら安全にスコープできる" },
+      { id: "zenyatta",  why: "ディスコードで照準を合わせやすくなる" },
+    ],
+    tips: "ダイナマイトは手動で起爆するか燃えた際の持続ダメージが強力なエリア制御スキル。B.O.B（ウルト）は7人目のプレイヤーとして戦う。マーシーのダメージブーストやゼニヤッタのディスコードをB.O.Bにつけると超強力。コーチガンで高所に移動できる。",
+  },
+
+  bastion: {
+    name: "バスティオン", role: "dmg", icon: "🔫",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでタレット射撃を丸ごと消される" },
+        { id: "winston",  why: "ジャンプで後ろに回り込まれ死角を突かれる" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中から爆撃してタレットモードを安全に破壊される" },
+        { id: "genji",    why: "デフレクトで大量の弾を反射され自傷死する" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでタレットモード中に強制解除される" },
+        { id: "baptiste", why: "イモータリティでリコンフィグの一点集中火力を完全無効化" },
+      ],
+    },
+    synergies: [
+      { id: "reinhardt", why: "シールドで守られながら安全に連射できる" },
+      { id: "mercy",     why: "ダメージブーストでダメージが2倍になる最強コンボ" },
+      { id: "ana",       why: "ナノブーストでウルトが超強化される" },
+      { id: "baptiste",  why: "アンプリフィケーションマトリックスで火力がさらに倍増" },
+    ],
+    tips: "良いポジションを見つけてタレットモードで攻撃しよう。リコンフィグ（ウルト）は壁に当てて跳ね返らせると広範囲に当たる。マーシーの火力増強との組み合わせが最強。敵に位置がバレたらすぐに移動しよう。",
+  },
+
+  cassidy: {
+    name: "キャシディ", role: "dmg", icon: "🤠",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでグレネードと通常弾を消される" },
+        { id: "wreckingball", why: "高機動でフラッシュバンを当てにくい" },
+      ],
+      dmg: [
+        { id: "genji",    why: "デフレクトでフラッシュバン後の弾を反射されてやられる" },
+        { id: "pharah",   why: "空中を素早く動かれるとピストルが当てにくい" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでデッドアイ中に止められる" },
+        { id: "kiriko",   why: "スズでフラッシュバンを即座に除去されコンボが崩れる" },
+      ],
+    },
+    synergies: [
+      { id: "sigma",     why: "グラビトンサージ＋フラッシュバンのコンボが強力" },
+      { id: "ana",       why: "ナノブーストでデッドアイが超強化される" },
+      { id: "zenyatta",  why: "ディスコードで素早く確実に倒せる" },
+      { id: "reinhardt", why: "シールドで守られながら安全に射撃できる" },
+    ],
+    tips: "フラッシュバンは空中の敵にも当たるのでファラ対策に使える。デッドアイはカバーを取られると効果が薄いので、相手がカバーなしの開けた場所にいる時に使おう。磁気グレネードは回避が難しい優秀なポーク。",
+  },
+
+  echo: {
+    name: "エコー", role: "dmg", icon: "🦋",
+    counters: {
+      tank: [
+        { id: "winston",  why: "テスラキャノンが空中でも追跡して当たり逃げにくい" },
+        { id: "dva",      why: "マトリックスでスティッキーボムを消される" },
+      ],
+      dmg: [
+        { id: "cassidy",  why: "フラッシュバンで空中でも止められて撃ち落とされる" },
+        { id: "widowmaker",why: "遠距離から一方的に狙われる大きいヒットボックス" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで空中から落とされる" },
+        { id: "baptiste", why: "イモータリティでフォーカスドビームによる確殺を防がれる" },
+      ],
+    },
+    synergies: [
+      { id: "mercy",     why: "マーシーブーストで空中での機動力がさらに上がる" },
+      { id: "ana",       why: "ナノブーストでスティッキーボムの爆発力が上がる" },
+      { id: "zarya",     why: "グラビトンで固めた敵にスティッキーボムを投げる" },
+      { id: "pharah",    why: "一緒に空中から攻撃できる空中コンビ" },
+    ],
+    tips: "デュプリケート（ウルト）はタンクに使うとウルトゲージが素早く溜まる。空中での機動力が高いので積極的に上下に動こう。フォーカスドビームは体力が50%以下の敵に超ダメージ。マーシーと一緒に飛ぶと非常に強力。",
+  },
+
+  emre: {
+    name: "エムレ", role: "dmg", icon: "🎖️",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでバーストライフルを消され近距離に詰められる" },
+        { id: "winston",  why: "ジャンプで一気に近距離に詰められADSが機能しなくなる" },
+      ],
+      dmg: [
+        { id: "genji",    why: "デフレクトでバーストを反射され近距離で不利" },
+        { id: "sombra",   why: "ハックでADSとサイフォンブラスターが両方封じられる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止まった状態で集中攻撃される" },
+        { id: "baptiste", why: "イモータリティで強引な確殺を防がれる" },
+      ],
+    },
+    synergies: [
+      { id: "ana",       why: "スリープダートで止まった敵にADSバーストが確実に当たる" },
+      { id: "reinhardt", why: "シールドで守られながら安全にADSできる" },
+      { id: "sigma",     why: "グラビトンで動けない敵にバーストを確実に当てられる" },
+      { id: "kiriko",    why: "スズで1v1中のデバフを除去して生存できる" },
+    ],
+    tips: "テイクエイム（ADS）で精度と射程が上がる。サイフォンブラスター（ピストル）はライフスティール＋垂直水平の機動力があり近距離の1v1で強い。オルタードバイタルパッシブで体力回復が早いので少し後退してから再突撃する戦法が有効。ウルト（オーバーライドプロトコル）は爆発ブラストかチャージメガショットを状況で使い分けよう。",
+  },
+
+  freja: {
+    name: "フレイア", role: "dmg", icon: "🐺",
+    counters: {
+      tank: [
+        { id: "winston",  why: "ジャンプで一気に距離を詰められスナイパーポジションを崩される" },
+        { id: "dva",      why: "マトリックスでボルトを消される" },
+      ],
+      dmg: [
+        { id: "genji",    why: "デフレクトでボルトを反射されてやられる" },
+        { id: "tracer",   why: "素早い動きで照準を合わせにくい" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止まった状態で集中攻撃される" },
+        { id: "zenyatta", why: "ディスコードで照準関係なく削られやすくなる" },
+      ],
+    },
+    synergies: [
+      { id: "ana",       why: "スリープダートで止まった敵にボルトが当てやすい" },
+      { id: "zarya",     why: "グラビトンで動けない敵に確実に当てられる" },
+      { id: "reinhardt", why: "シールドで守られながら安全に射撃できる" },
+      { id: "zenyatta",  why: "ディスコードで照準が合わせやすくなる" },
+    ],
+    tips: "ノルド系のハンターヒーロー。中長距離からの安定したボルト攻撃が強み。機動力スキルで素早くポジションを変えよう。静止した敵に対して高火力を発揮できるので、アナのスリープダートやザリアのグラビトンとのコンボが強力。",
+  },
+
+  genji: {
+    name: "ゲンジ", role: "dmg", icon: "🥷",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックで捕まえられて接射一確される" },
+        { id: "mauga",    why: "チェーンガンはデフレクトできず近距離で継続ダメージ" },
+      ],
+      dmg: [
+        { id: "mei",      why: "クリオフリーズ中に凍らせて動きを完全封印される" },
+        { id: "cassidy",  why: "フラッシュバンでデフレクト中断→確殺される" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでドラゴンブレード中に強制終了される" },
+        { id: "brigitte", why: "シールドバッシュでデフレクトを無効化し近距離で対抗" },
+      ],
+    },
+    synergies: [
+      { id: "ana",       why: "ナノブースト＋ドラゴンブレードが最強コンボ" },
+      { id: "dva",       why: "マトリックスでドラゴンブレード中の敵弾を消してくれる" },
+      { id: "winston",   why: "一緒に飛び込んでバックラインを荒らせる" },
+      { id: "zenyatta",  why: "ディスコードオーブで確実に素早く倒せる" },
+    ],
+    tips: "ナノブースト＋ドラゴンブレードはOW2最強格のウルトコンボ。壁を使って素早く移動し、デフレクト中も積極的に動こう。デフレクトはロードホッグのフックやメイの氷弾には効かないので注意。キリコのスズで生存力が大幅に上がる。",
+  },
+
+  hanzo: {
+    name: "ハンゾー", role: "dmg", icon: "🏹",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスで矢を消されて接近してくる" },
+        { id: "winston",  why: "ジャンプで一気に詰められ近距離では不利" },
+      ],
+      dmg: [
+        { id: "tracer",   why: "素早すぎる動きで矢を当てるのが非常に難しい" },
+        { id: "pharah",   why: "空中で素早く動くファラに矢を当てにくい" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止まった状態で集中攻撃される" },
+        { id: "baptiste", why: "イモータリティでドラゴンストライクコンボを完全無効化" },
+      ],
+    },
+    synergies: [
+      { id: "zarya",     why: "グラビトンサージ＋ドラゴンストライクの鉄板コンボ" },
+      { id: "mei",       why: "アイスウォールでドラゴンストライクを当てやすくできる" },
+      { id: "sigma",     why: "グラビトン＋ドラゴンストライクで確実なウルトコンボ" },
+      { id: "lucio",     why: "サウンドバリアでウルト後に集団戦をサポート" },
+    ],
+    tips: "ドラゴンストライクはグラビトンやアイスウォールとのコンボが最強。ソニックアローで壁越しに敵の位置を把握してから動こう。ストームアローは近距離の緊急回避や確実なダメージとして使える。",
+  },
+
+  junkrat: {
+    name: "ジャンクラット", role: "dmg", icon: "💣",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでグレネードを丸ごと消される" },
+        { id: "sigma",    why: "キネティックグラスプでグレネードを吸収されてパワーにされる" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中にいるファラに爆発物が届かず一方的に爆撃される" },
+        { id: "widowmaker",why: "遠距離から安全に一方的に狙われる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでランタイヤ中に止められる" },
+        { id: "baptiste", why: "イモータリティでランタイヤの全体ダメージを無効化" },
+      ],
+    },
+    synergies: [
+      { id: "reinhardt", why: "シールドで守られながら爆発物を安全に投げられる" },
+      { id: "zarya",     why: "グラビトンで集まった敵にコンシールドトラップが強力" },
+      { id: "lucio",     why: "壁走りと組み合わせた機動的な攻撃" },
+      { id: "mercy",     why: "ダメージブーストでダメージがさらにアップ" },
+    ],
+    tips: "コンシールドトラップで敵の動きを制限しよう。ランタイヤは壁を走らせることで意外な方向から攻撃できる。狭い廊下やポイントでの守りが非常に強い。爆発物のスプラッシュダメージを活用しよう。",
+  },
+
+  mei: {
+    name: "メイ", role: "dmg", icon: "❄",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックでクリオフリーズ中でも引き込まれる" },
+        { id: "ramattra", why: "ネメシスフォームで密着されると氷が機能しにくい" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中からアイスウォールを越えて安全に攻撃される" },
+        { id: "sombra",   why: "ハックでクリオフリーズとアイスウォールを封じられる" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールで凍結コンボ後の攻撃効果を下げられる" },
+        { id: "baptiste", why: "イモータリティでブリザードの集団確殺を完全無効化" },
+      ],
+    },
+    synergies: [
+      { id: "zarya",     why: "アイスウォール＋グラビトンサージの強力コンボ" },
+      { id: "hanzo",     why: "アイスウォールでドラゴンストライクを当てやすくする" },
+      { id: "sigma",     why: "グラビトン＋ブリザードで確実なウルトコンボ" },
+      { id: "reaper",    why: "ブリザード＋デスブロッサムの強力なコンボ" },
+    ],
+    tips: "アイスウォールは敵を分断したり、味方を高い場所に乗せたり使い方が多彩。ブリザードはグラビトンやドラゴンストライクとのコンボが最強。クリオフリーズで緊急回避しながら回復できる。",
+  },
+
+  pharah: {
+    name: "ファラ", role: "dmg", icon: "✈",
+    counters: {
+      tank: [
+        { id: "sigma",    why: "グラビトンサージで空中から引き落とされる" },
+        { id: "dva",      why: "マトリックスでロケットを消されながら追いかけられる" },
+      ],
+      dmg: [
+        { id: "soldier76",why: "トラッキング射撃で対空しやすく安定して削られる" },
+        { id: "widowmaker",why: "スコープで空中を一方的に仕留められる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで空中から落とされる" },
+        { id: "baptiste", why: "イモータリティでコンカッシブブラスト連打を防がれる" },
+      ],
+    },
+    synergies: [
+      { id: "mercy",     why: "ダメージブーストで火力が倍増するファラマーシーコンボ" },
+      { id: "ana",       why: "ナノブーストで爆発力が大幅アップ" },
+      { id: "echo",      why: "一緒に空中から攻撃できる空中コンビ" },
+      { id: "lucio",     why: "サウンドバリアで集団戦のサポートができる" },
+    ],
+    tips: "マーシーとのコンボ（ファラマーシー）は非常に強力。空中で高い位置にいながら曲射でロケットを当てよう。ジャンプジェットは移動だけでなく回避にも使える。対空ヒーローがいたらすぐ降りよう。",
+  },
+
+  reaper: {
+    name: "リーパー", role: "dmg", icon: "💀",
+    counters: {
+      tank: [
+        { id: "zarya",    why: "グラビトンサージで拘束され近づけなくなる" },
+        { id: "orisa",    why: "フォーティファイ中は削りにくくスピンで弾を跳ね返される" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中には近づけずショットガンが届かない" },
+        { id: "soldier76",why: "遠距離から安全にトラッキングで削られる" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでシャドーステップ後の自己回復を完全封印" },
+        { id: "baptiste", why: "イモータリティでデスブロッサムの全体ダメージを無効化" },
+      ],
+    },
+    synergies: [
+      { id: "zarya",     why: "グラビトンサージ＋デスブロッサムが鉄板コンボ" },
+      { id: "lucio",     why: "スピードブーストで飛び込みがしやすくなる" },
+      { id: "ana",       why: "ナノブーストでデスブロッサムが超強力になる" },
+      { id: "mei",       why: "ブリザード＋デスブロッサムの強力なコンボ" },
+    ],
+    tips: "タンクに非常に強いので積極的に近づいて攻撃しよう。シャドーステップは安全な場所でこっそり使うか、サプライズ攻撃に使おう。デスブロッサムはグラビトンやブリザードとのコンボが最強。",
+  },
+
+  sojourn: {
+    name: "ソジョーン", role: "dmg", icon: "⚙️",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでレールガンの弾を消されてスライドも追われる" },
+        { id: "winston",  why: "ジャンプで接近されてスナイパーポジションを崩される" },
+      ],
+      dmg: [
+        { id: "genji",    why: "デフレクトでチャージ弾を反射されて自傷する" },
+        { id: "tracer",   why: "素早い動きでチャージ弾を当てにくい" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止まった状態で集中攻撃される" },
+        { id: "zenyatta", why: "ディスコードで常に狙われやすい状態にされる" },
+      ],
+    },
+    synergies: [
+      { id: "ana",       why: "スリープダートで止まった敵にチャージ弾が当てやすい" },
+      { id: "zarya",     why: "グラビトンで動けない敵にチャージ弾を確実に当てられる" },
+      { id: "reinhardt", why: "シールドで守られながらチャージできる" },
+      { id: "zenyatta",  why: "ディスコードで照準を合わせやすくなる" },
+    ],
+    tips: "パワースライドでレールガンを素早くチャージできる。チャージしたレールガンはスクウィッシーを一確できる。ディスラプターショットは敵の動きを遅くして追い打ちしやすくする。スライドは前方だけでなく高所への移動にも使える。",
+  },
+
+  soldier76: {
+    name: "ソルジャー:76", role: "dmg", icon: "🪖",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでライフルとヘリックスロケットを消される" },
+        { id: "roadhog",  why: "フックで距離を詰められ近距離では不利" },
+      ],
+      dmg: [
+        { id: "genji",    why: "デフレクトでライフルの弾を反射されてやられる" },
+        { id: "sombra",   why: "ハックでバイオフィールドとスプリントを完全封印される" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでバイオフィールドの自己回復効果を封印される" },
+        { id: "baptiste", why: "イモータリティでバイザーウルトの確殺を無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "ana",       why: "ナノブースト＋タクティカルバイザーが超強力コンボ" },
+      { id: "reinhardt", why: "シールドで守られながら安全に攻撃できる" },
+      { id: "dva",       why: "バイオティックフィールドでDVaの体力も回復できる" },
+      { id: "zenyatta",  why: "ディスコードで倒しやすくなり、バイザーが強化される" },
+    ],
+    tips: "初心者でも扱いやすいオールラウンダー。バイオティックフィールドは自分だけでなく周りの味方も回復できる。タクティカルバイザー（ウルト）はアナのナノブーストとのコンボが非常に強力。スプリントで素早くポジションを変えよう。",
+  },
+
+  sombra: {
+    name: "ソンブラ", role: "dmg", icon: "💻",
+    counters: {
+      tank: [
+        { id: "zarya",    why: "HPが高くピストルだけでは削りきれず粘られる" },
+        { id: "roadhog",  why: "フックでインビジから強引に引き出される" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中からハックが当てにくく一方的に爆撃される" },
+        { id: "reaper",   why: "近距離での1v1でリーパーのショットガンが圧倒的" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでハック後の離脱を止められる" },
+        { id: "kiriko",   why: "スズでハックを味方から即座に解除されて妨害を消される" },
+      ],
+    },
+    synergies: [
+      { id: "tracer",    why: "一緒にインビジで侵入してバックラインを荒らせる" },
+      { id: "reaper",    why: "ハックで足止め後にリーパーが近づいて倒せる" },
+      { id: "genji",     why: "ハックで動きを封じてゲンジが倒す流れ" },
+      { id: "dva",       why: "ハック後にDVaが追い打ちで確実にキル" },
+    ],
+    tips: "体力が30%以下の敵にオートマテッドが発動する。ハックは敵のスキルを封じるのでタンクや回復スキル持ちを優先して狙おう。トランスロケーターを安全な位置にセットしてから突撃しよう。",
+  },
+
+  symmetra: {
+    name: "シンメトラ", role: "dmg", icon: "💠",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでビームを消されタレットも高機動に壊される" },
+        { id: "winston",  why: "ジャンプでタレット位置に乗り込まれて全破壊される" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中から安全にタレットを爆撃して全破壊される" },
+        { id: "sombra",   why: "ハックでタレットが全て一瞬で無効化される" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止まった状態で集中攻撃される" },
+        { id: "baptiste", why: "イモータリティでテレポーター起動時のコンボを無効化" },
+      ],
+    },
+    synergies: [
+      { id: "reinhardt", why: "シールドで守られながら安全にタレット設置できる" },
+      { id: "torbjorn",  why: "タレット2種による強固なダブル防衛ライン" },
+      { id: "bastion",   why: "テレポーターで予想外の位置にバスティオンを送り込める" },
+      { id: "mercy",     why: "ダメージブーストでタレットのダメージがアップ" },
+    ],
+    tips: "タレットは3本まで設置でき集中攻撃すると高ダメージ。テレポーター（ウルト）は攻守両方に使える。タレットは見えにくい場所に分散設置すると効果的。ゴールポイントの守りに特に強い。",
+  },
+
+  torbjorn: {
+    name: "トールビョーン", role: "dmg", icon: "🔨",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでタレットの弾を消されながら近づいて破壊" },
+        { id: "winston",  why: "ジャンプでタレット位置に乗り込まれて近距離で破壊される" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中からタレットを安全に爆撃されて全破壊される" },
+        { id: "sombra",   why: "ハックでタレットを無効化されてウルトも止められる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでモルテンコア中に強制解除される" },
+        { id: "baptiste", why: "イモータリティでモルテンコアの確殺コンボを無効化" },
+      ],
+    },
+    synergies: [
+      { id: "reinhardt", why: "シールドでタレットを守りながら前線を維持できる" },
+      { id: "symmetra",  why: "タレット2種による強固なダブル防衛ライン" },
+      { id: "mercy",     why: "ダメージブーストでタレットのダメージがアップ" },
+      { id: "baptiste",  why: "アンプリフィケーションマトリックスでタレットの火力が倍増" },
+    ],
+    tips: "タレットは予想外の場所に置くのが重要。モルテンコア（ウルト）はオーバーロードが大幅強化され一定時間非常に硬くなる。オーバーロードはリロード・攻撃速度・耐久力を一時的に強化する。ゴールポイントの守りが得意。",
+  },
+
+  tracer: {
+    name: "トレーサー", role: "dmg", icon: "⚡",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックで引き寄せられてから接射一確される" },
+        { id: "zarya",    why: "グラビトンで機動力を封じられて逃げられなくなる" },
+      ],
+      dmg: [
+        { id: "mei",      why: "アイスブラスターでブリンクを封じられて氷漬けにされる" },
+        { id: "cassidy",  why: "フラッシュバンでブリンク中断→確殺される" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止まった状態で集中攻撃される" },
+        { id: "brigitte", why: "シールドバッシュで近距離の動きを完全封印される" },
+      ],
+    },
+    synergies: [
+      { id: "winston",   why: "一緒にバックラインを荒らす定番コンボ" },
+      { id: "lucio",     why: "スピードブーストでさらに機動力が上がる" },
+      { id: "zenyatta",  why: "ディスコードオーブで素早く確実に倒せる" },
+      { id: "ana",       why: "体力が低いので回復サポートが非常に重要" },
+    ],
+    tips: "パルスボムは壁や地面に投げつけると当てやすい。ブリンクとリコールを駆使して常に生き残ろう。リコールで回復も戻るので体力ギリギリまで戦えるのが強み。ハックやフラッシュバンには最大限注意。",
+  },
+
+  venture: {
+    name: "ベンチャー", role: "dmg", icon: "⛏️",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "地上から浮上した瞬間にフックで捕まえられる" },
+        { id: "zarya",    why: "グラビトンで機動力を封じられて逃げられなくなる" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中から一方的に攻撃され地上ベースでは届かない" },
+        { id: "widowmaker",why: "遠距離から安全に一方的に削られる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで浮上中に止められて集中攻撃される" },
+        { id: "baptiste", why: "イモータリティで突撃確殺コンボを完全無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "lucio",     why: "スピードブーストで突撃タイミングをサポートできる" },
+      { id: "ana",       why: "ナノブーストで地上に浮上した瞬間の攻撃が超強力" },
+      { id: "kiriko",    why: "スズで突撃中のデバフを除去して生存力を上げる" },
+      { id: "winston",   why: "同じダイブタイプで一緒に飛び込んで荒らせる" },
+    ],
+    tips: "バロウ（地中潜伏）で一時的に無敵になれる。ドリルダッシュで素早く前進してからバースト攻撃が強力。フランクとダイブが得意なヒーロー。アナのナノブーストと合わせて突撃するのが強力。",
+  },
+
+  vendetta: {
+    name: "ヴェンデッタ", role: "dmg", icon: "⚔️",
+    counters: {
+      tank: [
+        { id: "sigma",    why: "グラビトンで動けない状態にされコンボを使えなくなる" },
+        { id: "zarya",    why: "グラビトンで近づく前に拘束されて何もできない" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中にいるためグレートソードが届かず一方的に爆撃される" },
+        { id: "widowmaker",why: "遠距離から近づけないままじわじわ削られる" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでオンスロートパッシブの自己回復を封じられる" },
+        { id: "baptiste", why: "イモータリティでソードコンボの確殺を無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "kiriko",    why: "スズで突撃中のデバフを除去して生存力が上がる" },
+      { id: "lucio",     why: "スピードブーストで距離を詰めやすくなる" },
+      { id: "ana",       why: "ナノブーストでコンボの破壊力が超強化される" },
+      { id: "zarya",     why: "グラビトンで動けない敵にコンボを確実に叩き込める" },
+    ],
+    tips: "グレートソードのコンボは最後のオーバーヘッドスラッシュが最高ダメージ。ブロックは正面からのダメージを軽減しメレー攻撃を受け流せる。ソードスロー＋飛翔で遠距離への急接近が可能。至近距離での1v1が最も強いが、空中や遠距離のキャラには近づけないため注意。",
+  },
+
+  widowmaker: {
+    name: "ウィドウメイカー", role: "dmg", icon: "🎯",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスでライフルの弾を消されながら追いかけられる" },
+        { id: "reinhardt", why: "シールドでチームを守られてダメージを稼ぎにくい" },
+      ],
+      dmg: [
+        { id: "tracer",   why: "素早すぎる動きで狙いを定めにくい" },
+        { id: "sombra",   why: "ハックでグラップリングフックを封じられて逃げられない" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止まった状態を味方に狙われる" },
+        { id: "lucio",    why: "壁走りで素早く接近され近距離戦を強いられる" },
+      ],
+    },
+    synergies: [
+      { id: "zarya",     why: "グラビトンで動けない敵を狙い打てる" },
+      { id: "lucio",     why: "スピードブーストでポジション移動がしやすい" },
+      { id: "ana",       why: "スリープダートで止まった敵を確実に狙える" },
+      { id: "sigma",     why: "グラビトンで固めた敵を遠距離から仕留められる" },
+    ],
+    tips: "良いポジション取りが全て。グラップリングフックで素早く移動して視点を変えよう。インフラサイトで壁越しに敵の位置を把握してからヘッドショットを狙おう。",
+  },
+
+  /* ═══════════════ SUPPORT ═══════════════ */
+
+  ana: {
+    name: "アナ", role: "sup", icon: "👩‍⚕️",
+    counters: {
+      tank: [
+        { id: "dva",      why: "マトリックスで弾を消されるとスリープダートが当てにくい" },
+        { id: "winston",  why: "ジャンプで一気に接近されてスコープを維持できない" },
+      ],
+      dmg: [
+        { id: "genji",    why: "飛び込んでデフレクトでダートを返されてやられる" },
+        { id: "tracer",   why: "素早く接近されてスコープで狙いにくい" },
+      ],
+      sup: [
+        { id: "kiriko",   why: "スズでアンチヒールを即座に解除されて妨害が消える" },
+        { id: "baptiste", why: "イモータリティでスリープ→確殺コンボを完全防がれる" },
+      ],
+    },
+    synergies: [
+      { id: "reinhardt", why: "ナノブースト＋アースシャッターが超強力コンボ" },
+      { id: "genji",     why: "ナノブースト＋ドラゴンブレードがOW2最強コンボのひとつ" },
+      { id: "soldier76", why: "ナノブースト＋タクティカルバイザーが強力" },
+      { id: "doomfist",  why: "ナノブーストでエンパワードパンチが超強化される" },
+    ],
+    tips: "スリープダートは敵のウルト中にも使えてカウンターとして超強力。アンチヒールグレネードは回復を封じる最強の妨害スキル。ナノブーストは必ず強いウルトとコンボしよう（ナノゲンジ・ナノラインなど）。",
+  },
+
+  baptiste: {
+    name: "バティスト", role: "sup", icon: "⚕",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックで引き寄せられてイモータリティを使う前に一確される" },
+        { id: "sigma",    why: "グラビトンで動きを封じられてから倒される" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックでイモータリティフィールドが完全封印される" },
+        { id: "tracer",   why: "素早く接近されてイモータリティを使う前にやられる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止められてアンプリフィケーションが中断" },
+        { id: "zenyatta", why: "ディスコードで継続的に弱体化されて前に出られない" },
+      ],
+    },
+    synergies: [
+      { id: "soldier76", why: "アンプリフィケーションマトリックスでライフル火力を倍増" },
+      { id: "cassidy",   why: "マトリックスでキャシディのダメージを2倍にできる" },
+      { id: "bastion",   why: "マトリックスでバスティオンの高火力がさらに2倍" },
+      { id: "reinhardt", why: "シールドで守られながら安全にヒールできる" },
+    ],
+    tips: "イモータリティフィールドは相手のウルト（アースシャッターやデスブロッサムなど）を無効化できる最強のカウンター。アンプリフィケーションマトリックス（ウルト）は直線的な攻撃を持つヒーローとコンボしよう。",
+  },
+
+  brigitte: {
+    name: "ブリギッテ", role: "sup", icon: "⚒️",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックでシールドを無視して引き寄せられる" },
+        { id: "sigma",    why: "グラビトンで動きを封じられて何もできなくなる" },
+      ],
+      dmg: [
+        { id: "pharah",   why: "空中から攻撃されウィップショットが届かない" },
+        { id: "reaper",   why: "近距離で防具ごとゴリ押しされてあっという間に溶ける" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールでインスパイアの回復効果が大幅低下する" },
+        { id: "zenyatta", why: "ディスコードで防具があっても継続的に削られていく" },
+      ],
+    },
+    synergies: [
+      { id: "reinhardt", why: "ダブルシールド＋インスパイアで強固な前線を作れる" },
+      { id: "zarya",     why: "ザリアのチャージ中をシールドで守れる" },
+      { id: "lucio",     why: "スピード＋インスパイアで持続的な回復を提供できる" },
+      { id: "ana",       why: "ナノブースト＋ラリーでチーム全体を強化できる" },
+    ],
+    tips: "インスパイアは近くの味方も一定時間回復する。ラリー（ウルト）は味方に防具を付与する。シールドバッシュはアビリティを中断させられる最強のCC。ブロール（正面対決）に強い編成と相性が良い。",
+  },
+
+  illari: {
+    name: "イラリ", role: "sup", icon: "☀️",
+    counters: {
+      tank: [
+        { id: "winston",  why: "ジャンプでポジションに乗り込まれてパイロンを壊される" },
+        { id: "sigma",    why: "グラビトンで動きを封じられてキャプティブサンが打てない" },
+      ],
+      dmg: [
+        { id: "genji",    why: "飛び込んでバックラインで孤立させられてパイロンも壊される" },
+        { id: "sombra",   why: "ハックでヒーリングパイロンとウルトが完全無効化される" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでキャプティブサン中に止められる" },
+        { id: "baptiste", why: "イモータリティでキャプティブサンの爆発ダメージを無効化" },
+      ],
+    },
+    synergies: [
+      { id: "pharah",    why: "パイロンから自動ヒールを受けながら空中で戦える" },
+      { id: "soldier76", why: "パイロンのヒールでソルジャーがより積極的に戦える" },
+      { id: "ana",       why: "2人のバックラインヒーラーでサポートが厚くなる" },
+      { id: "sigma",     why: "シグマのシールド後ろにパイロンを安全に設置できる" },
+    ],
+    tips: "ヒーリングパイロンは自動でチームを回復するので安全な場所に設置しよう（壊されやすい）。キャプティブサン（ウルト）は敵をマークし、ダメージを受けると爆発する。ソーラーライフルはフルチャージでより多くのダメージが出る。",
+  },
+
+  juno: {
+    name: "ジュノ", role: "sup", icon: "🚀",
+    counters: {
+      tank: [
+        { id: "sigma",    why: "グラビトンで空中のジュノを引き落とされる" },
+        { id: "dva",      why: "マトリックスでスラッグショットを消されながら追いかけられる" },
+      ],
+      dmg: [
+        { id: "widowmaker",why: "空中で目立ちやすくスコープで一方的に狙われやすい" },
+        { id: "cassidy",  why: "フラッシュバンで空中のホバーを止められる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止められてオービタルレイが中断される" },
+        { id: "zenyatta", why: "ディスコードで空中でも継続的に削られやすくなる" },
+      ],
+    },
+    synergies: [
+      { id: "pharah",    why: "空中コンビで一緒に動きながらヒールできる" },
+      { id: "winston",   why: "ダイブサポートとして飛び込みを後方支援できる" },
+      { id: "tracer",    why: "ハイパーリングで機動力をさらに強化できる" },
+      { id: "genji",     why: "ダイブコンポジションでゲンジの突撃をサポート" },
+    ],
+    tips: "ハイパーリングを通ると移動速度がアップする。味方が通りやすい場所に投げよう。オービタルレイ（ウルト）はビームが当たった敵へのダメージと味方へのヒールを同時に増加させる。ホバージェットで空中に浮かびながら支援できる。",
+  },
+
+  kiriko: {
+    name: "キリコ", role: "sup", icon: "🦊",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックでテレポート先に追いかけられて引き込まれる" },
+        { id: "sigma",    why: "グラビトンでスズを使う前に動きを封じられる" },
+      ],
+      dmg: [
+        { id: "widowmaker",why: "体力が低くヘッドショット一確される" },
+        { id: "reaper",   why: "近距離で飛び込まれるとテレポートしても追いかけられる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止められてスズを使えない状態で倒される" },
+        { id: "baptiste", why: "イモータリティで確殺コンボを防がれる" },
+      ],
+    },
+    synergies: [
+      { id: "genji",     why: "スズでドラゴンブレード中のデバフを除去して守れる" },
+      { id: "doomfist",  why: "スズでCCやアンチヒールを除去して突撃を維持できる" },
+      { id: "winston",   why: "テレポートでダイブ先に追いかけてヒールできる" },
+      { id: "ana",       why: "スズでアナのアンチヒールを味方から除去できる" },
+    ],
+    tips: "スズは全デバフ（アンチヒール・CC・火など）を除去できる最強のクレンズ。キツネラッシュ（ウルト）はチームのクールダウンを大幅短縮。味方プレイヤーにテレポートできる。クナイのヘッドショットは超高ダメージ。",
+  },
+
+  lifeweaver: {
+    name: "ライフウィーバー", role: "sup", icon: "🌺",
+    counters: {
+      tank: [
+        { id: "sigma",    why: "グラビトンで動きを封じられてライフグリップが使えなくなる" },
+        { id: "roadhog",  why: "フックで引き寄せられて逃げ手段がなく一確される" },
+      ],
+      dmg: [
+        { id: "genji",    why: "飛び込んでバックラインで孤立させられてすぐ倒される" },
+        { id: "sombra",   why: "ハックで全スキルを封じられて完全に無力化される" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止められてからフォーカスされる" },
+        { id: "zenyatta", why: "ディスコードで低体力のライフウィーバーが削られやすい" },
+      ],
+    },
+    synergies: [
+      { id: "pharah",    why: "ライフグリップで危険なポジションから引き戻せる" },
+      { id: "reinhardt", why: "ペタルプラットフォームで有利なアングルに乗せ、グリップで引き戻せる" },
+      { id: "ana",       why: "ペタルプラットフォームでアナの射撃アングルを良くできる" },
+      { id: "sigma",     why: "ライフグリップでウルト中のシグマを安全に引き戻せる" },
+    ],
+    tips: "ライフグリップは味方を安全な場所に引き戻せる（強制なので状況をよく見て使おう）。ペタルプラットフォームで味方を高い位置に乗せて有利なアングルを作れる。ツリーオブライフ（ウルト）はポイントに広範囲ヒールゾーンを作る。",
+  },
+
+  lucio: {
+    name: "ルシオ", role: "sup", icon: "🎵",
+    counters: {
+      tank: [
+        { id: "sigma",    why: "グラビトンで壁走り中でも拘束されて壁から落とされる" },
+        { id: "roadhog",  why: "フックで壁走り中に引き込まれて一確される" },
+      ],
+      dmg: [
+        { id: "widowmaker",why: "体力が低く壁走り中でもスコープで狙われやすい" },
+        { id: "cassidy",  why: "フラッシュバンで壁走りを止められる" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで壁走り中に止められてサウンドバリアが打てない" },
+        { id: "baptiste", why: "イモータリティでサウンドバリアコンボの効果を減らされる" },
+      ],
+    },
+    synergies: [
+      { id: "reinhardt", why: "スピードブーストでシールドを前線に押し込める" },
+      { id: "zarya",     why: "スピードブーストで突撃タイミングをサポート" },
+      { id: "reaper",    why: "スピードブーストで飛び込みのタイミングを作れる" },
+      { id: "mei",       why: "スピードブーストで敵に一気に接近してブリザード" },
+    ],
+    tips: "壁走りはルシオ最大の強み。常に動き回ってポジションを変えよう。サウンドバリア（ウルト）は集団戦の直前に使うのが最も効果的。ヒールとスピードを状況に合わせてこまめに切り替えよう。",
+  },
+
+  mercy: {
+    name: "マーシー", role: "sup", icon: "👼",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックでガーディアンエンジェルを強制中断して一確される" },
+        { id: "sigma",    why: "グラビトンで動きを封じられリザレクションの隙を突かれる" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックでガーディアンエンジェルを完全停止させられる" },
+        { id: "widowmaker",why: "体力が低くヘッドショット一確されやすい" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでリザレクション中に止められる" },
+        { id: "zenyatta", why: "ディスコードで低体力のマーシーが削られやすい" },
+      ],
+    },
+    synergies: [
+      { id: "pharah",    why: "ダメージブースト＋ファラの鉄板ファラマーシーコンボ" },
+      { id: "bastion",   why: "ダメージブーストでバスティオンのダメージが2倍になる" },
+      { id: "echo",      why: "空中で一緒に動けるマーシーエコーコンボ" },
+      { id: "soldier76", why: "ダメージブーストでタクティカルバイザー中の火力を強化" },
+    ],
+    tips: "リザレクションは必ず安全を確認してから使おう（使用中は無敵ではない）。ダメージブーストはバスティオンやファラとのコンボが最強。ヴァルキリー（ウルト）中は自動でチームヒールし続けられる。",
+  },
+
+  mizuki: {
+    name: "ミズキ", role: "sup", icon: "🪭",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックで引き寄せられてイモータリティなしで一確される" },
+        { id: "sigma",    why: "グラビトンで動きを封じられて前線での攻撃維持ができない" },
+      ],
+      dmg: [
+        { id: "reaper",   why: "近距離で防具ごとゴリ押しされて回復オーラが機能しない" },
+        { id: "sombra",   why: "ハックで回復オーラ含む全スキルが止まる" },
+      ],
+      sup: [
+        { id: "ana",      why: "アンチヒールで攻撃継続中の自己回復が封じられる" },
+        { id: "baptiste", why: "イモータリティで結界ウルトの確殺コンボを無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "reinhardt", why: "近距離ブロール編成でダメージを与えやすく回復オーラを維持できる" },
+      { id: "zarya",     why: "近距離の乱戦でダメージを稼ぎやすくなる" },
+      { id: "brigitte",  why: "両者ともアグレッシブサポートでブロール編成に最強" },
+      { id: "lucio",     why: "スピード＋ミズキの回復でアグレッシブな前線を維持できる" },
+    ],
+    tips: "回復オーラはダメージを与え続けることで維持する攻撃的なサポート。カタシロリターンで前線に飛び込んで紙人形を置き、危なくなったら引き戻せる。バインディングチェインで敵の動きを妨害しよう。結界サンクチュアリ（ウルト）は味方をヒールしながら外からの弾を吸収する最強の防御ウルト。",
+  },
+
+  moira: {
+    name: "モイラ", role: "sup", icon: "🌸",
+    counters: {
+      tank: [
+        { id: "sigma",    why: "グラビトンで拘束されてファドアウトを使う前に倒される" },
+        { id: "roadhog",  why: "フックで引き込まれてファドアウト逃げを封じられる" },
+      ],
+      dmg: [
+        { id: "widowmaker",why: "遠距離からヘッドショットで一確されやすい" },
+        { id: "cassidy",  why: "中距離を保たれると回復しながら逃げにくい" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでコアラプション中に止められる" },
+        { id: "baptiste", why: "イモータリティでコアラプションの全体ダメージを完全無効化" },
+      ],
+    },
+    synergies: [
+      { id: "zarya",     why: "グラビトンで集まった敵にコアラプション（ウルト）が確実に当たる" },
+      { id: "reaper",    why: "コアラプション中にデスブロッサムを重ねる強力コンボ" },
+      { id: "mei",       why: "ブリザード＋コアラプションのコンボ" },
+      { id: "lucio",     why: "スピードブーストで機動力がさらに上がる" },
+    ],
+    tips: "ファドアウト（テレポート）は最大限に活用して安全なポジションを確保しよう。コアラプション（ウルト）はグラビトンやブリザードとのコンボが超強力。バイオティックオーブはヒールか攻撃かを状況に合わせて使い分けよう。",
+  },
+
+  jetpackcat: {
+    name: "ジェットパックキャット", role: "sup", icon: "🐱",
+    counters: {
+      tank: [
+        { id: "dva",      why: "空中でも追いかけられてマトリックスでヒールビームを消される" },
+        { id: "sigma",    why: "グラビトンで空中から引き落とされてフューエルが尽きる" },
+      ],
+      dmg: [
+        { id: "sombra",   why: "ハックで全スキルとウルトが封じられる最大の天敵" },
+        { id: "widowmaker",why: "空中は大きいヒットボックスでヘッドショットを狙われやすい" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで空中から落とされる" },
+        { id: "baptiste", why: "イモータリティでライフライン輸送後の確殺コンボを無効化" },
+      ],
+    },
+    synergies: [
+      { id: "roadhog",   why: "ライフラインで敵陣裏に運んでからフック＋ウルトが超強力" },
+      { id: "pharah",    why: "両者とも空中にいるので一緒に空中から戦える" },
+      { id: "reinhardt", why: "ライフラインで最前線に素早く送り込める" },
+      { id: "genji",     why: "ダイブ後に落下しそうな場面をライフラインで救える" },
+    ],
+    tips: "パッシブで常時飛行できる唯一のサポート。地上でなく空中からチームを回復・支援するのが基本スタイル。ライフラインは味方を輸送して移動速度アップ＋回復ができ、マップ外への落下阻止にも使える。ロードホッグなど機動力の低いタンクを敵後方に運ぶコンボが強力。パー（エリアヒール）は時間とともに回復頻度が上がるので早めに発動しよう。",
+  },
+
+  wuyang: {
+    name: "ウーヤン", role: "sup", icon: "💧",
+    counters: {
+      tank: [
+        { id: "sigma",    why: "グラビトンで動きを封じられて水シールドを設置できない" },
+        { id: "roadhog",  why: "フックで引き寄せられて逃げる手段がなく倒される" },
+      ],
+      dmg: [
+        { id: "genji",    why: "飛び込んでバックラインで孤立させられる" },
+        { id: "reaper",   why: "近距離で飛び込まれると水オーブで距離を保てない" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートで止められてから集中攻撃される" },
+        { id: "baptiste", why: "イモータリティで水の波ウルトの回復コンボを無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "zarya",     why: "水シールドの爆発ノックダウン＋グラビトンのコンボ" },
+      { id: "reinhardt", why: "水シールドで守れば爆発時に敵をノックダウンできる" },
+      { id: "pharah",    why: "水の波ウルトで回復量増加＋空中でも効果的にヒールできる" },
+      { id: "anran",     why: "姉妹コンビ。ウーヤンの回復でアンランの前線突撃を支援" },
+    ],
+    tips: "水のオーブは軌道をコントロールできる独特のヒール。水シールドは爆発時に近くの敵をノックダウンするのでタンクや前線で使うと強い。水の上を移動するスキルで素早くポジション変更できる。姉のアンランと一緒に使うと攻守両面でシナジーが高い。",
+  },
+
+  zenyatta: {
+    name: "ゼニヤッタ", role: "sup", icon: "🧘",
+    counters: {
+      tank: [
+        { id: "roadhog",  why: "フックで引き込まれて体力が低くすぐ倒される" },
+        { id: "sigma",    why: "グラビトンで動きを封じられてトランスを使えないまま倒される" },
+      ],
+      dmg: [
+        { id: "reaper",   why: "近距離で飛び込まれると体力が低くあっという間に溶ける" },
+        { id: "tracer",   why: "素早く接近されて逃げる手段がほぼない" },
+      ],
+      sup: [
+        { id: "ana",      why: "スリープダートでトランスセンデンス中に止められる" },
+        { id: "kiriko",   why: "スズでディスコードオーブを即座に解除されて無効化される" },
+      ],
+    },
+    synergies: [
+      { id: "genji",     why: "ディスコードオーブで確実に素早く倒せる" },
+      { id: "tracer",    why: "ディスコードで体力が少ない敵を素早く倒せる" },
+      { id: "cassidy",   why: "ディスコード＋フラッシュバンでヘッドショット確殺" },
+      { id: "dva",       why: "ディスコードをかけつつDVaのダイブをサポート" },
+    ],
+    tips: "ディスコードオーブは最も危険な敵（タンクかサポート）に当て続けよう。トランスセンデンス（ウルト）は無敵なので、デスブロッサムやアースシャッターなどのコンボ対策に使おう。体力が低いのでポジションに常に気をつけよう。",
+  },
+
+};
+
+// ================================================================
+//  UI描画
+// ================================================================
+const GRID_MAP = { tank: "grid-tank", dmg: "grid-dmg", sup: "grid-sup" };
+let currentHeroId = null;
+
+Object.entries(HEROES).forEach(([id, hero]) => {
+  const grid = document.getElementById(GRID_MAP[hero.role]);
+  if (!grid) return;
+  const card = document.createElement("div");
+  card.className = "hero-card";
+  card.dataset.id = id;
+  card.innerHTML = `<span class="h-icon">${hero.icon}</span><span class="h-name">${hero.name}</span>`;
+  card.addEventListener("click", () => selectHero(id));
+  grid.appendChild(card);
+});
+
+function roleLabel(r) {
+  return { tank: "🛡 タンク", dmg: "⚔ ダメージ", sup: "💚 サポート" }[r] || r;
+}
+
+function buildList(listEl, items) {
+  listEl.innerHTML = "";
+  items.forEach(({ id, why }) => {
+    const h = HEROES[id];
+    if (!h) return;
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span class="li-icon">${h.icon}</span>
+      <div>
+        <div class="li-name">${h.name}</div>
+        <div class="li-why">${why}</div>
+      </div>`;
+    listEl.appendChild(li);
+  });
+}
+
+function buildAntiList(containerEl, counters) {
+  containerEl.innerHTML = "";
+  const roles = [
+    { key: "tank", label: "🛡 タンク" },
+    { key: "dmg",  label: "⚔ ダメージ" },
+    { key: "sup",  label: "💚 サポート" },
+  ];
+  roles.forEach(({ key, label }) => {
+    const items = counters[key];
+    if (!items || items.length === 0) return;
+    const section = document.createElement("div");
+    section.className = "anti-role-section";
+    const roleLabel = document.createElement("div");
+    roleLabel.className = "anti-role-label";
+    roleLabel.textContent = label;
+    section.appendChild(roleLabel);
+    const ul = document.createElement("ul");
+    ul.className = "h-list";
+    items.forEach(({ id, why }) => {
+      const h = HEROES[id];
+      if (!h) return;
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span class="li-icon">${h.icon}</span>
+        <div>
+          <div class="li-name">${h.name}</div>
+          <div class="li-why">${why}</div>
+        </div>`;
+      ul.appendChild(li);
+    });
+    section.appendChild(ul);
+    containerEl.appendChild(section);
+  });
+}
+
+function selectHero(id) {
+  document.querySelectorAll(".hero-card").forEach(c => c.classList.remove("selected"));
+  document.querySelector(`[data-id="${id}"]`).classList.add("selected");
+  currentHeroId = id;
+
+  const hero = HEROES[id];
+  document.getElementById("r-icon").textContent = hero.icon;
+  document.getElementById("r-name").textContent = hero.name;
+  document.getElementById("r-role").textContent = roleLabel(hero.role);
+  document.getElementById("r-tips").textContent = hero.tips;
+
+  buildAntiList(document.getElementById("list-anti"), hero.counters);
+  buildList(document.getElementById("list-syn"),  hero.synergies);
+
+  const panel = document.getElementById("result-panel");
+  panel.classList.add("visible");
+  renderBoard(id);
+  panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// ================================================================
+//  掲示板（localStorage）
+// ================================================================
+const STORE_KEY = "ow2_board";
+const LIKED_KEY = "ow2_liked";
+
+let _memBoard = {};
+let _memLiked = [];
+
+function loadBoard() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || _memBoard; } catch { return _memBoard; }
+}
+function saveBoard(data) {
+  _memBoard = data;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function loadLiked() {
+  try { return JSON.parse(localStorage.getItem(LIKED_KEY)) || _memLiked; } catch { return _memLiked; }
+}
+function saveLiked(arr) {
+  _memLiked = arr;
+  try { localStorage.setItem(LIKED_KEY, JSON.stringify(arr)); } catch {}
+}
+
+function esc(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+const BADGE = {
+  anti:    '<span class="post-badge badge-anti">⚠ アンチピック</span>',
+  syn:     '<span class="post-badge badge-syn">✨ シナジー</span>',
+  comment: '<span class="post-badge badge-comment">💬 その他</span>',
+};
+
+function renderBoard(heroId) {
+  const board  = loadBoard();
+  const liked  = loadLiked();
+  const posts  = (board[heroId] || []).slice().sort((a, b) => b.likes - a.likes);
+  const el     = document.getElementById("board-posts");
+
+  if (posts.length === 0) {
+    el.innerHTML = '<div class="board-empty">まだ投稿がありません。最初の投稿をしてみよう！</div>';
+    return;
+  }
+
+  el.innerHTML = posts.map(p => {
+    const isLiked = liked.includes(p.id);
+    return `
+      <div class="board-post">
+        ${BADGE[p.category] || BADGE.comment}
+        <div class="post-body">
+          ${p.heroName ? `<div class="post-hero">${esc(p.heroName)}</div>` : ""}
+          <div class="post-text">${esc(p.text)}</div>
+        </div>
+        <div class="post-like">
+          <button class="like-btn ${isLiked ? "liked" : ""}"
+            onclick="toggleLike('${esc(heroId)}','${esc(p.id)}')">👍</button>
+          <span class="like-count">${p.likes}</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function toggleLike(heroId, postId) {
+  const board = loadBoard();
+  const liked = loadLiked();
+  const post  = (board[heroId] || []).find(p => p.id === postId);
+  if (!post) return;
+
+  const idx = liked.indexOf(postId);
+  if (idx === -1) { post.likes++; liked.push(postId); }
+  else            { post.likes = Math.max(0, post.likes - 1); liked.splice(idx, 1); }
+
+  saveBoard(board);
+  saveLiked(liked);
+  renderBoard(heroId);
+}
+
+function submitPost() {
+  if (!currentHeroId) return;
+  const text = document.getElementById("board-text").value.trim();
+  if (!text) { alert("コメントを入力してください"); return; }
+
+  const board    = loadBoard();
+  if (!board[currentHeroId]) board[currentHeroId] = [];
+
+  board[currentHeroId].push({
+    id:       Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+    category: document.getElementById("board-cat").value,
+    heroName: document.getElementById("board-hero").value.trim(),
+    text,
+    likes: 0,
+  });
+
+  saveBoard(board);
+  document.getElementById("board-hero").value = "";
+  document.getElementById("board-text").value = "";
+  renderBoard(currentHeroId);
+}
+</script>
+</body>
+</html>
