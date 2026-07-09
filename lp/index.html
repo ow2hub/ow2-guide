@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>頒布帳 — 同人活動の売上・在庫・損益をぜんぶ1画面で</title>
-  <meta name="description" content="イベント頒布からBOOTH通販、年末の棚卸しまで。同人サークルのための売上・在庫管理アプリ「頒布帳」。手作りスプレッドシートからの卒業。">
+  <title>シフトリズム — 3交代のあなたに、カレンダーじゃなく体内時計を</title>
+  <meta name="description" content="早番・遅番・夜勤。シフトを入れるだけで、いつ寝て・いつ光を浴びて・いつ食べるかを提案。家族には『仕事時間』ではなく『回復時間』を共有。3交代勤務者のための生活リズムアプリ。">
 
   <!-- ▼ GA4: 測定IDを差し替えて有効化してください ▼
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
@@ -18,46 +18,52 @@
 
   <style>
     :root {
-      --ink: #2b2724;
-      --ink-soft: #6b625a;
-      --paper: #faf7f2;
-      --paper-warm: #f3ede3;
-      --card: #ffffff;
-      --accent: #d9584a;
-      --accent-deep: #b8402f;
-      --indigo: #3a4a6b;
-      --line: #e5ddd1;
-      --ok: #3f8f5f;
+      --bg: #0d1220;
+      --bg-soft: #141b2e;
+      --card: #1a2338;
+      --card-2: #202b45;
+      --ink: #e8edf7;
+      --ink-soft: #93a1c0;
+      --line: #2a3552;
+      --day: #f4b740;     /* 早番/日中 */
+      --eve: #e0724a;     /* 遅番/夕 */
+      --night: #6c7bd6;   /* 夜勤 */
+      --sleep: #35507a;   /* 睡眠 */
+      --free: #3fae7a;    /* フリー */
+      --accent: #4f8cff;
+      --accent-deep: #3a6fd6;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
-      background: var(--paper);
+      background: var(--bg);
       color: var(--ink);
       font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', sans-serif;
       line-height: 1.8;
     }
-    img { max-width: 100%; }
-    .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 0 20px; }
 
     /* ── Hero ── */
     .hero {
-      background: linear-gradient(180deg, var(--paper-warm) 0%, var(--paper) 100%);
+      background:
+        radial-gradient(1200px 400px at 50% -80px, rgba(79,140,255,0.18), transparent 60%),
+        linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 100%);
       border-bottom: 1px solid var(--line);
-      padding: 64px 0 56px;
+      padding: 66px 0 56px;
       text-align: center;
     }
     .brand {
       display: inline-block;
-      font-size: 0.85rem; font-weight: 700; letter-spacing: 2px;
-      color: var(--accent); border: 1.5px solid var(--accent);
-      border-radius: 999px; padding: 3px 16px; margin-bottom: 22px;
+      font-size: 0.82rem; font-weight: 700; letter-spacing: 2px;
+      color: #bcd0ff; background: rgba(79,140,255,0.12);
+      border: 1px solid rgba(79,140,255,0.4);
+      border-radius: 999px; padding: 4px 16px; margin-bottom: 22px;
     }
     .hero h1 {
-      font-size: clamp(1.6rem, 5.2vw, 2.5rem);
-      font-weight: 800; line-height: 1.45; letter-spacing: 0.02em;
+      font-size: clamp(1.65rem, 5.4vw, 2.6rem);
+      font-weight: 800; line-height: 1.45; letter-spacing: 0.01em;
     }
-    .hero h1 .em { color: var(--accent); }
+    .hero h1 .em { color: #7fa9ff; }
     .hero .sub {
       margin-top: 18px; color: var(--ink-soft);
       font-size: clamp(0.95rem, 2.6vw, 1.08rem);
@@ -68,189 +74,224 @@
       font-size: 1.05rem; font-weight: 700;
       padding: 16px 42px; border-radius: 999px;
       text-decoration: none;
-      box-shadow: 0 6px 18px rgba(217,88,74,0.35);
+      box-shadow: 0 8px 22px rgba(79,140,255,0.4);
       transition: transform 0.15s ease, background 0.15s ease;
     }
     .cta-btn:hover { background: var(--accent-deep); transform: translateY(-2px); }
     .cta-note { margin-top: 12px; font-size: 0.8rem; color: var(--ink-soft); }
-    .cta-note strong { color: var(--accent); }
+    .cta-note strong { color: #ffd479; }
 
-    section { padding: 60px 0; }
+    /* ── Week band demo ── */
+    .demo {
+      max-width: 560px; margin: 34px auto 0;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 14px; padding: 18px 18px 14px;
+      text-align: left;
+    }
+    .demo-title { font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 12px; letter-spacing: 1px; }
+    .band-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+    .band-day { width: 34px; font-size: 0.72rem; color: var(--ink-soft); flex-shrink: 0; }
+    .band { flex: 1; height: 18px; border-radius: 4px; display: flex; overflow: hidden; }
+    .seg { height: 100%; }
+    .s-sleep { background: var(--sleep); }
+    .s-work-d { background: var(--day); }
+    .s-work-e { background: var(--eve); }
+    .s-work-n { background: var(--night); }
+    .s-free { background: var(--free); }
+    .demo-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; font-size: 0.7rem; color: var(--ink-soft); }
+    .demo-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+    section { padding: 58px 0; }
     section h2 {
-      text-align: center; font-size: clamp(1.3rem, 4vw, 1.7rem);
+      text-align: center; font-size: clamp(1.3rem, 4vw, 1.75rem);
       font-weight: 800; margin-bottom: 8px;
     }
-    section .lead { text-align: center; color: var(--ink-soft); margin-bottom: 36px; font-size: 0.95rem; }
+    section .lead { text-align: center; color: var(--ink-soft); margin-bottom: 34px; font-size: 0.95rem; }
 
     /* ── Pain ── */
-    .pain { background: var(--paper); }
-    .pain-list { display: grid; gap: 14px; max-width: 640px; margin: 0 auto; }
+    .pain-list { display: grid; gap: 13px; max-width: 660px; margin: 0 auto; }
     .pain-item {
       background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-      padding: 16px 20px; display: flex; gap: 14px; align-items: flex-start;
-      font-size: 0.95rem;
+      padding: 15px 18px; display: flex; gap: 13px; align-items: flex-start;
+      font-size: 0.94rem;
     }
-    .pain-item .p-icon { font-size: 1.4rem; flex-shrink: 0; }
-    .pain-item b { color: var(--accent-deep); }
-    .pain-close { text-align: center; margin-top: 30px; font-size: 1.05rem; font-weight: 700; }
+    .pain-item .p-icon { font-size: 1.35rem; flex-shrink: 0; }
+    .pain-item b { color: #ffb27a; }
+    .pain-close { text-align: center; margin-top: 28px; font-size: 1.08rem; font-weight: 700; }
+    .pain-close span { color: #7fa9ff; }
+
+    /* ── Contrast (vs calendar) ── */
+    .contrast { background: var(--bg-soft); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 720px; margin: 0 auto; }
+    @media (max-width: 620px) { .vs-grid { grid-template-columns: 1fr; } }
+    .vs-card { border-radius: 14px; padding: 22px 20px; }
+    .vs-old { background: var(--card); border: 1px solid var(--line); }
+    .vs-new { background: linear-gradient(160deg, #1c2b4d, #17233d); border: 1px solid rgba(79,140,255,0.5); }
+    .vs-tag { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; }
+    .vs-old .vs-tag { color: var(--ink-soft); }
+    .vs-new .vs-tag { color: #7fa9ff; }
+    .vs-card h3 { font-size: 1.05rem; margin-bottom: 10px; }
+    .vs-card ul { list-style: none; }
+    .vs-card li { font-size: 0.88rem; padding: 5px 0; color: var(--ink-soft); }
+    .vs-old li::before { content: "△ "; color: #6b7794; }
+    .vs-new li::before { content: "◎ "; color: #7fa9ff; }
+    .vs-new li { color: var(--ink); }
 
     /* ── Features ── */
-    .features { background: var(--paper-warm); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-    @media (max-width: 640px) { .feat-grid { grid-template-columns: 1fr; } }
+    .feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 620px) { .feat-grid { grid-template-columns: 1fr; } }
     .feat {
       background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-      padding: 24px 22px;
+      padding: 22px 20px;
     }
     .feat .f-icon {
       display: inline-flex; align-items: center; justify-content: center;
       width: 44px; height: 44px; border-radius: 10px;
-      background: var(--paper-warm); font-size: 1.5rem; margin-bottom: 12px;
+      background: var(--card-2); font-size: 1.4rem; margin-bottom: 12px;
     }
-    .feat h3 { font-size: 1.05rem; margin-bottom: 8px; }
-    .feat p { font-size: 0.88rem; color: var(--ink-soft); }
-    .feat .tag {
-      display: inline-block; font-size: 0.7rem; font-weight: 700;
-      color: var(--indigo); background: #e8ecf5; border-radius: 4px;
-      padding: 1px 8px; margin-left: 6px; vertical-align: middle;
-    }
-
-    /* ── Flow ── */
-    .flow-steps { display: grid; gap: 0; max-width: 560px; margin: 0 auto; }
-    .flow-step { display: flex; gap: 18px; }
-    .flow-num {
-      flex-shrink: 0; width: 40px; display: flex; flex-direction: column; align-items: center;
-    }
-    .flow-num .n {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: var(--indigo); color: #fff; font-weight: 700;
-      display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
-    }
-    .flow-num .bar { flex: 1; width: 2px; background: var(--line); margin: 6px 0; }
-    .flow-step:last-child .bar { display: none; }
-    .flow-body { padding-bottom: 28px; }
-    .flow-body h3 { font-size: 1rem; margin-top: 5px; }
-    .flow-body p { font-size: 0.88rem; color: var(--ink-soft); margin-top: 4px; }
+    .feat h3 { font-size: 1.02rem; margin-bottom: 8px; }
+    .feat p { font-size: 0.87rem; color: var(--ink-soft); }
 
     /* ── Pricing ── */
-    .pricing { background: var(--paper-warm); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .pricing { background: var(--bg-soft); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
     .price-card {
-      max-width: 460px; margin: 0 auto; background: var(--card);
+      max-width: 440px; margin: 0 auto; background: var(--card);
       border: 2px solid var(--accent); border-radius: 18px;
-      padding: 36px 30px; text-align: center;
-      box-shadow: 0 10px 30px rgba(217,88,74,0.12);
+      padding: 34px 28px; text-align: center;
+      box-shadow: 0 12px 34px rgba(79,140,255,0.16);
     }
-    .price-card .plan-name { font-weight: 700; color: var(--indigo); letter-spacing: 1px; font-size: 0.85rem; }
+    .price-card .plan-name { font-weight: 700; color: #7fa9ff; letter-spacing: 1px; font-size: 0.85rem; }
     .price-row { margin: 14px 0 4px; }
     .price-old { color: var(--ink-soft); text-decoration: line-through; font-size: 1.1rem; margin-right: 10px; }
-    .price-now { font-size: 2.6rem; font-weight: 800; color: var(--accent); }
+    .price-now { font-size: 2.6rem; font-weight: 800; color: #fff; }
     .price-now small { font-size: 1rem; font-weight: 700; }
-    .price-card .buyout { font-size: 0.9rem; font-weight: 700; color: var(--ok); }
+    .price-card .buyout { font-size: 0.88rem; font-weight: 700; color: var(--free); }
     .price-card ul { list-style: none; margin: 20px 0; text-align: left; }
     .price-card ul li { font-size: 0.9rem; padding: 7px 0; border-bottom: 1px dashed var(--line); }
-    .price-card ul li::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+    .price-card ul li::before { content: "✓ "; color: var(--free); font-weight: 700; }
 
     /* ── FAQ ── */
-    .faq-list { max-width: 640px; margin: 0 auto; }
-    .faq-item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; padding: 18px 20px; }
-    .faq-item .q { font-weight: 700; font-size: 0.95rem; }
-    .faq-item .q::before { content: "Q. "; color: var(--accent); }
-    .faq-item .a { font-size: 0.88rem; color: var(--ink-soft); margin-top: 8px; }
-    .faq-item .a::before { content: "A. "; color: var(--indigo); font-weight: 700; }
+    .faq-list { max-width: 660px; margin: 0 auto; }
+    .faq-item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; padding: 17px 20px; }
+    .faq-item .q { font-weight: 700; font-size: 0.94rem; }
+    .faq-item .q::before { content: "Q. "; color: #7fa9ff; }
+    .faq-item .a { font-size: 0.87rem; color: var(--ink-soft); margin-top: 7px; }
+    .faq-item .a::before { content: "A. "; color: #7fa9ff; font-weight: 700; }
 
     /* ── Final CTA ── */
-    .final-cta { text-align: center; background: var(--indigo); color: #fff; }
-    .final-cta h2 { color: #fff; }
-    .final-cta .lead { color: #c3cde0; }
-    .final-cta .cta-note { color: #c3cde0; }
-    .final-cta .cta-note strong { color: #ffd9a8; }
+    .final-cta { text-align: center; }
+    .final-cta .box {
+      background: linear-gradient(160deg, #1c2b4d, #16223c);
+      border: 1px solid rgba(79,140,255,0.5); border-radius: 20px;
+      padding: 44px 24px;
+    }
 
     footer {
-      text-align: center; padding: 28px 16px; font-size: 0.75rem; color: var(--ink-soft);
+      text-align: center; padding: 26px 16px; font-size: 0.74rem; color: var(--ink-soft);
       border-top: 1px solid var(--line);
     }
+    .disclaimer { max-width: 660px; margin: 0 auto 0; font-size: 0.72rem; color: #6b7794; line-height: 1.7; }
   </style>
 </head>
 <body>
 
   <header class="hero">
     <div class="wrap">
-      <span class="brand">頒布帳(はんぷちょう)β</span>
-      <h1>同人活動の<span class="em">売上・在庫・損益</span>、<br>ぜんぶ1画面で。</h1>
-      <p class="sub">イベント頒布からBOOTH通販、年末の棚卸しまで。<br>手作りスプレッドシート、もう卒業しませんか。</p>
+      <span class="brand">シフトリズム β</span>
+      <h1>3交代のあなたに、<br><span class="em">カレンダーじゃなく、体内時計を。</span></h1>
+      <p class="sub">早番・遅番・夜勤。シフトを入れるだけで「いつ寝て・いつ光を浴びて・いつ食べるか」を提案。<br>家族には"仕事時間"ではなく"回復時間"を共有します。</p>
+
+      <div class="demo">
+        <div class="demo-title">▼ 家族に共有される「今週のリズム」(イメージ)</div>
+        <div class="band-row"><span class="band-day">月</span><div class="band"><span class="seg s-sleep" style="width:29%"></span><span class="seg s-work-d" style="width:34%"></span><span class="seg s-free" style="width:37%"></span></div></div>
+        <div class="band-row"><span class="band-day">火</span><div class="band"><span class="seg s-sleep" style="width:29%"></span><span class="seg s-work-d" style="width:34%"></span><span class="seg s-free" style="width:37%"></span></div></div>
+        <div class="band-row"><span class="band-day">水</span><div class="band"><span class="seg s-free" style="width:20%"></span><span class="seg s-work-e" style="width:34%"></span><span class="seg s-sleep" style="width:46%"></span></div></div>
+        <div class="band-row"><span class="band-day">木</span><div class="band"><span class="seg s-free" style="width:20%"></span><span class="seg s-work-e" style="width:34%"></span><span class="seg s-sleep" style="width:46%"></span></div></div>
+        <div class="band-row"><span class="band-day">金</span><div class="band"><span class="seg s-work-n" style="width:30%"></span><span class="seg s-sleep" style="width:42%"></span><span class="seg s-free" style="width:28%"></span></div></div>
+        <div class="band-row"><span class="band-day">土</span><div class="band"><span class="seg s-work-n" style="width:30%"></span><span class="seg s-sleep" style="width:46%"></span><span class="seg s-free" style="width:24%"></span></div></div>
+        <div class="band-row"><span class="band-day">日</span><div class="band"><span class="seg s-sleep" style="width:33%"></span><span class="seg s-free" style="width:67%"></span></div></div>
+        <div class="demo-legend">
+          <span><i class="dot s-work-d"></i>早番</span>
+          <span><i class="dot s-work-e"></i>遅番</span>
+          <span><i class="dot s-work-n"></i>夜勤</span>
+          <span><i class="dot s-sleep"></i>睡眠(起こさないで)</span>
+          <span><i class="dot s-free"></i>フリー</span>
+        </div>
+      </div>
+
       <a class="cta-btn js-cta" href="#register" data-loc="hero">事前登録する(無料)</a>
-      <p class="cta-note">事前登録の方は正式リリース時 <strong>¥2,980 → ¥1,980</strong> の早期割引</p>
+      <p class="cta-note">事前登録の方は正式リリース時 <strong>¥1,480 → ¥980</strong> の早期割引</p>
     </div>
   </header>
 
   <section class="pain">
     <div class="wrap">
-      <h2>こんな経験、ありませんか</h2>
-      <p class="lead">同人活動の「お金まわり」は、創作の時間をいちばん奪う雑務です。</p>
+      <h2>3交代の、この感じ。</h2>
+      <p class="lead">シフトを「書く」アプリはある。でも、体はそれじゃ回復しない。</p>
       <div class="pain-list">
-        <div class="pain-item"><span class="p-icon">📦</span><span>イベントの後、<b>頒布数のメモが行方不明</b>。既刊の残部数はいつも「たぶんこれくらい」。</span></div>
-        <div class="pain-item"><span class="p-icon">🧾</span><span>BOOTH・とら・メロン…<b>通販の売上が散らばって</b>、年間いくら売れたのか誰にも分からない。</span></div>
-        <div class="pain-item"><span class="p-icon">😱</span><span>利益が20万円を超えたら確定申告。<b>年末の棚卸し(在庫の原価計上)</b>、正しくできてますか?</span></div>
-        <div class="pain-item"><span class="p-icon">🫠</span><span>申告前の1月、<b>1年分のレシートと記憶を頼りにExcelへ手入力</b>する地獄の週末。</span></div>
+        <div class="pain-item"><span class="p-icon">🌙</span><span>夜勤明け、<b>いつ寝て何時に起きればいいのか毎回わからない</b>。気づけば夕方まで寝て、夜また眠れない。</span></div>
+        <div class="pain-item"><span class="p-icon">🔄</span><span>遅番から夜勤への切り替えで<b>体がついていかず、常にだるい</b>。どの並びが自分にキツいのかも把握できてない。</span></div>
+        <div class="pain-item"><span class="p-icon">🤫</span><span>昼に寝ていると<b>家族に起こされる</b>。「今寝てる」が伝わらず、予定もいつも噛み合わない。</span></div>
+        <div class="pain-item"><span class="p-icon">📅</span><span>シフトカレンダーは持ってる。けど<b>予定を色分けするだけ</b>で、体調は何も良くならない。</span></div>
       </div>
-      <p class="pain-close">その雑務、<span style="color:var(--accent)">記録した瞬間に終わる</span>仕組みにしました。</p>
+      <p class="pain-close">シフトは、予定表じゃない。<span>あなたの体内時計への"入力"です。</span></p>
+    </div>
+  </section>
+
+  <section class="contrast">
+    <div class="wrap">
+      <h2>ふつうのシフトアプリと、何が違う?</h2>
+      <p class="lead">200万人が使う定番アプリにも、これは無い。</p>
+      <div class="vs-grid">
+        <div class="vs-card vs-old">
+          <div class="vs-tag">ふつうのシフトカレンダー</div>
+          <h3>シフトを「記録」する</h3>
+          <ul>
+            <li>予定を色分けして表示</li>
+            <li>仕事の時間を家族に共有</li>
+            <li>メモを書ける</li>
+            <li>…で、体調は自分でなんとかする</li>
+          </ul>
+        </div>
+        <div class="vs-card vs-new">
+          <div class="vs-tag">シフトリズム</div>
+          <h3>シフトから「体を整える」</h3>
+          <ul>
+            <li>寝る/光/食事の時間を提案</li>
+            <li>"回復時間"を家族に共有</li>
+            <li>体調ログでキツい並びを発見</li>
+            <li>カレンダーじゃなく、体内時計を</li>
+          </ul>
+        </div>
+      </div>
     </div>
   </section>
 
   <section class="features">
     <div class="wrap">
-      <h2>頒布帳ができること</h2>
-      <p class="lead">即売会の机の上でも、締切前の深夜でも。スマホでサッと記録するだけ。</p>
+      <h2>できること</h2>
+      <p class="lead">むずかしい設定はなし。シフトの型を選ぶだけで動き出します。</p>
       <div class="feat-grid">
         <div class="feat">
-          <span class="f-icon">🎪</span>
-          <h3>イベント別の頒布記録<span class="tag">当日モード</span></h3>
-          <p>持込数を入れておけば、売り子しながらタップするだけで頒布数をカウント。残部数は自動計算。オフライン(圏外の会場)でも動きます。</p>
+          <span class="f-icon">🛌</span>
+          <h3>睡眠・光・食事のタイミング提案</h3>
+          <p>各勤務日に「何時に寝て、何時に光を浴びて、いつ食べると崩れにくいか」を提示。交代勤務で知られた整え方を、あなたのシフトに当てはめます。</p>
         </div>
         <div class="feat">
-          <span class="f-icon">🛒</span>
-          <h3>通販売上の横断集計</h3>
-          <p>BOOTH・とらのあな・メロンブックス・その他をチャネル別に記録。月次と年間の売上が1つのグラフにまとまります。</p>
+          <span class="f-icon">👨‍👩‍👧</span>
+          <h3>"回復時間"の家族共有</h3>
+          <p>今週の「仕事/睡眠/フリー」を1枚の画像に。LINEで送れば、家族は相手不要でひと目で理解。「昼は寝てる、起こさない」が伝わります。</p>
         </div>
         <div class="feat">
-          <span class="f-icon">📊</span>
-          <h3>品目ごとの損益がひと目</h3>
-          <p>印刷費・参加費・交通費を紐づけて、「この新刊、結局黒字だった?」に即答。次の部数決めの根拠になります。</p>
+          <span class="f-icon">📈</span>
+          <h3>体調ログでパターン発見</h3>
+          <p>就寝・起床と体調をワンタップ記録。「夜勤→早番の並びが一番きつい」など、自分だけの傾向が見えてきます。</p>
         </div>
         <div class="feat">
-          <span class="f-icon">🧮</span>
-          <h3>棚卸しレポートとCSV出力<span class="tag">確定申告</span></h3>
-          <p>年末在庫を原価法で自動集計。確定申告や会計ソフト(freee・弥生など)への取込に使えるCSVを1クリックで出力。</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="flow">
-    <div class="wrap">
-      <h2>使い方は3ステップ</h2>
-      <p class="lead">セットアップに説明書は要りません。</p>
-      <div class="flow-steps">
-        <div class="flow-step">
-          <div class="flow-num"><span class="n">1</span><span class="bar"></span></div>
-          <div class="flow-body">
-            <h3>本・グッズを登録する</h3>
-            <p>頒価と印刷部数、印刷費を入れるだけ。原価は自動で1冊あたりに換算されます。</p>
-          </div>
-        </div>
-        <div class="flow-step">
-          <div class="flow-num"><span class="n">2</span><span class="bar"></span></div>
-          <div class="flow-body">
-            <h3>売れたら記録する</h3>
-            <p>イベントは当日モードでタップ、通販は月イチでまとめて入力。それだけで帳簿が育ちます。</p>
-          </div>
-        </div>
-        <div class="flow-step">
-          <div class="flow-num"><span class="n">3</span><span class="bar"></span></div>
-          <div class="flow-body">
-            <h3>年末はボタン1つ</h3>
-            <p>棚卸しレポートと年間集計CSVを出力して、確定申告の準備は完了です。</p>
-          </div>
+          <span class="f-icon">📴</span>
+          <h3>オフラインで動く・広告なし</h3>
+          <p>データは端末内に保存。休憩中の圏外でも動きます。買い切りなので、うるさい広告も月額もありません。</p>
         </div>
       </div>
     </div>
@@ -263,13 +304,14 @@
       <div class="price-card">
         <div class="plan-name">買い切りプラン</div>
         <div class="price-row">
-          <span class="price-old">¥2,980</span><span class="price-now">¥1,980<small>(税込)</small></span>
+          <span class="price-old">¥1,480</span><span class="price-now">¥980<small>(税込)</small></span>
         </div>
         <div class="buyout">事前登録者限定の早期割引 / 月額費用なし</div>
         <ul>
-          <li>品目・イベント・記録数すべて無制限</li>
-          <li>当日モード(オフライン対応)</li>
-          <li>棚卸しレポート・CSV出力</li>
+          <li>シフトパターン無制限・全期間の提案</li>
+          <li>睡眠・光・食事のタイミング提案</li>
+          <li>家族共有ビュー(画像で送れる)</li>
+          <li>体調ログと傾向分析</li>
           <li>今後のアップデートも追加費用なし</li>
         </ul>
         <a class="cta-btn js-cta" href="#register" data-loc="pricing">事前登録する(無料)</a>
@@ -283,20 +325,20 @@
       <h2>よくある質問</h2>
       <div class="faq-list">
         <div class="faq-item">
+          <p class="q">2交代や不規則なシフトでも使えますか?</p>
+          <p class="a">はい。早番/遅番/夜勤/休を自由に組めるので、2交代や変則勤務にも対応します。まずは3交代の方に一番フィットする設計です。</p>
+        </div>
+        <div class="faq-item">
+          <p class="q">家族にもアプリのインストールが必要?</p>
+          <p class="a">不要です。共有は「今週のリズム」を画像やリンクで送る形なので、ご家族はLINE等で見るだけでOKです。</p>
+        </div>
+        <div class="faq-item">
+          <p class="q">提案は医学的なものですか?</p>
+          <p class="a">いいえ。交代勤務で一般に知られた生活リズムの整え方をもとにしたガイドで、診断や治療ではありません。体調が続く場合は医療機関にご相談ください。</p>
+        </div>
+        <div class="faq-item">
           <p class="q">いつリリースされますか?</p>
-          <p class="a">2026年内のリリースを予定しています。事前登録いただいた方から順にβ版をご案内します。</p>
-        </div>
-        <div class="faq-item">
-          <p class="q">スマホで使えますか?</p>
-          <p class="a">はい。スマホ・PCどちらのブラウザでも動作し、アプリのようにホーム画面に追加できます。即売会の会場(圏外)でも当日モードは動きます。</p>
-        </div>
-        <div class="faq-item">
-          <p class="q">会計ソフトの代わりになりますか?</p>
-          <p class="a">仕訳や申告書の作成は行いません。頒布帳は「同人活動の記録と集計」に特化し、freee・弥生などへ渡せるCSVを出力します。</p>
-        </div>
-        <div class="faq-item">
-          <p class="q">データはどこに保存されますか?</p>
-          <p class="a">お使いの端末内に保存されます(ローカルファースト設計)。バックアップ用のエクスポート機能も用意します。</p>
+          <p class="a">2026年内を予定。事前登録の方から順にβ版をご案内します。スマホ・PCのブラウザで動き、ホーム画面に追加できます。</p>
         </div>
       </div>
     </div>
@@ -304,16 +346,18 @@
 
   <section class="final-cta" id="register">
     <div class="wrap">
-      <h2>創作の時間を、雑務から取り戻そう。</h2>
-      <p class="lead">事前登録は10秒で終わります。リリース時に早期割引(¥1,980)をご案内。</p>
-      <a class="cta-btn js-cta js-form" href="#" data-loc="final">メールアドレスで事前登録</a>
-      <p class="cta-note">登録者限定: β版の先行アクセス+<strong>¥1,000オフ</strong></p>
+      <div class="box">
+        <h2>体を、シフトに壊させない。</h2>
+        <p class="lead">事前登録は10秒。リリース時に早期割引(¥980)をご案内します。</p>
+        <a class="cta-btn js-cta js-form" href="#" data-loc="final">メールアドレスで事前登録</a>
+        <p class="cta-note">登録者限定: β版の先行アクセス+<strong>¥500オフ</strong></p>
+      </div>
     </div>
   </section>
 
   <footer>
-    <p>頒布帳(仮称)は個人開発のプロダクトです。仕様・価格・リリース時期は変更になる場合があります。</p>
-    <p style="margin-top:6px">&copy; 2026 頒布帳 開発チーム</p>
+    <p class="disclaimer">シフトリズム(仮称)は個人開発のプロダクトです。仕様・価格・リリース時期は変更になる場合があります。本アプリの提案は一般的な生活リズムのガイドであり、医療上の助言ではありません。</p>
+    <p style="margin-top:10px">&copy; 2026 シフトリズム 開発チーム</p>
   </footer>
 
   <script>
@@ -322,14 +366,12 @@
 
     document.querySelectorAll('.js-cta').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        // GA4イベント(GA4未設定時は何もしない)
         if (typeof gtag === 'function') {
           gtag('event', 'cta_click', { cta_location: btn.dataset.loc });
         }
       });
     });
 
-    // 最終CTAだけはフォームへ直接遷移
     document.querySelectorAll('.js-form').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.preventDefault();
