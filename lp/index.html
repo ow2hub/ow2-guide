@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>シフトリズム — 3交代のあなたに、カレンダーじゃなく体内時計を</title>
-  <meta name="description" content="早番・遅番・夜勤。シフトを入れるだけで、いつ寝て・いつ光を浴びて・いつ食べるかを提案。家族には『仕事時間』ではなく『回復時間』を共有。3交代勤務者のための生活リズムアプリ。">
+  <title>シフトリズム — 2交代・3交代のあなたに、カレンダーじゃなく体内時計を</title>
+  <meta name="description" content="日勤・夜勤も、早番・遅番・夜勤も。シフトを入れるだけで、いつ寝て・いつ光を浴びて・いつ食べるかを提案。家族には『仕事時間』ではなく『回復時間』を共有。交代勤務者のための生活リズムアプリ。">
 
   <!-- ▼ GA4: 測定IDを差し替えて有効化してください ▼
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
@@ -25,7 +25,7 @@
       --ink: #e8edf7;
       --ink-soft: #93a1c0;
       --line: #2a3552;
-      --day: #f4b740;     /* 早番/日中 */
+      --day: #f4b740;     /* 日勤/早番 */
       --eve: #e0724a;     /* 遅番/夕 */
       --night: #6c7bd6;   /* 夜勤 */
       --sleep: #35507a;   /* 睡眠 */
@@ -39,206 +39,212 @@
       background: var(--bg);
       color: var(--ink);
       font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', sans-serif;
-      line-height: 1.8;
+      line-height: 1.7;
     }
-    .wrap { max-width: 900px; margin: 0 auto; padding: 0 20px; }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
 
-    /* ── Hero ── */
+    /* ── HERO (landscape / at-a-glance) ── */
     .hero {
       background:
-        radial-gradient(1200px 400px at 50% -80px, rgba(79,140,255,0.18), transparent 60%),
+        radial-gradient(1200px 420px at 78% -60px, rgba(79,140,255,0.20), transparent 60%),
         linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 100%);
       border-bottom: 1px solid var(--line);
-      padding: 66px 0 56px;
-      text-align: center;
+      padding: 40px 0 44px;
     }
+    .hero-grid {
+      display: grid; grid-template-columns: 1.05fr 1.15fr;
+      gap: 44px; align-items: center;
+    }
+    @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; gap: 28px; } }
+
     .brand {
       display: inline-block;
-      font-size: 0.82rem; font-weight: 700; letter-spacing: 2px;
+      font-size: 0.8rem; font-weight: 700; letter-spacing: 2px;
       color: #bcd0ff; background: rgba(79,140,255,0.12);
       border: 1px solid rgba(79,140,255,0.4);
-      border-radius: 999px; padding: 4px 16px; margin-bottom: 22px;
+      border-radius: 999px; padding: 4px 15px; margin-bottom: 16px;
     }
     .hero h1 {
-      font-size: clamp(1.65rem, 5.4vw, 2.6rem);
-      font-weight: 800; line-height: 1.45; letter-spacing: 0.01em;
+      font-size: clamp(1.55rem, 3.6vw, 2.5rem);
+      font-weight: 800; line-height: 1.4; letter-spacing: 0.01em;
     }
     .hero h1 .em { color: #7fa9ff; }
-    .hero .sub {
-      margin-top: 18px; color: var(--ink-soft);
-      font-size: clamp(0.95rem, 2.6vw, 1.08rem);
-    }
+    .hero .sub { margin-top: 14px; color: var(--ink-soft); font-size: clamp(0.9rem, 1.9vw, 1.05rem); }
+
+    .hero-points { list-style: none; margin: 18px 0 6px; display: grid; gap: 8px; }
+    .hero-points li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.92rem; }
+    .hero-points .pi { font-size: 1.15rem; flex-shrink: 0; line-height: 1.5; }
+    .hero-points b { color: #cfe0ff; }
+
+    .cta-wrap { margin-top: 22px; }
     .cta-btn {
-      display: inline-block; margin-top: 30px;
+      display: inline-block;
       background: var(--accent); color: #fff;
-      font-size: 1.05rem; font-weight: 700;
-      padding: 16px 42px; border-radius: 999px;
+      font-size: 1.03rem; font-weight: 700;
+      padding: 15px 40px; border-radius: 999px;
       text-decoration: none;
       box-shadow: 0 8px 22px rgba(79,140,255,0.4);
       transition: transform 0.15s ease, background 0.15s ease;
     }
     .cta-btn:hover { background: var(--accent-deep); transform: translateY(-2px); }
-    .cta-note { margin-top: 12px; font-size: 0.8rem; color: var(--ink-soft); }
+    .cta-note { margin-top: 10px; font-size: 0.78rem; color: var(--ink-soft); }
     .cta-note strong { color: #ffd479; }
 
-    /* ── Week band demo ── */
-    .demo {
-      max-width: 560px; margin: 34px auto 0;
+    /* ── Week band panel (shows BOTH 2交代 & 3交代) ── */
+    .panel {
       background: var(--card); border: 1px solid var(--line);
-      border-radius: 14px; padding: 18px 18px 14px;
-      text-align: left;
+      border-radius: 16px; padding: 18px 18px 14px;
     }
-    .demo-title { font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 12px; letter-spacing: 1px; }
-    .band-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
-    .band-day { width: 34px; font-size: 0.72rem; color: var(--ink-soft); flex-shrink: 0; }
-    .band { flex: 1; height: 18px; border-radius: 4px; display: flex; overflow: hidden; }
+    .panel-head { font-size: 0.78rem; color: var(--ink-soft); margin-bottom: 12px; letter-spacing: 0.5px; }
+    .panel-head b { color: #cfe0ff; }
+    .mini { margin-bottom: 14px; }
+    .mini:last-of-type { margin-bottom: 8px; }
+    .mini-title {
+      font-size: 0.74rem; font-weight: 700; color: #aebbd8;
+      margin-bottom: 7px; display: flex; align-items: center; gap: 7px;
+    }
+    .mini-title .badge {
+      font-size: 0.66rem; color: #0d1220; background: #7fa9ff;
+      border-radius: 4px; padding: 1px 7px; font-weight: 800;
+    }
+    .band-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .band-day { width: 22px; font-size: 0.66rem; color: var(--ink-soft); flex-shrink: 0; }
+    .band { flex: 1; height: 13px; border-radius: 3px; display: flex; overflow: hidden; }
     .seg { height: 100%; }
     .s-sleep { background: var(--sleep); }
-    .s-work-d { background: var(--day); }
-    .s-work-e { background: var(--eve); }
-    .s-work-n { background: var(--night); }
+    .s-day  { background: var(--day); }
+    .s-eve  { background: var(--eve); }
+    .s-night{ background: var(--night); }
     .s-free { background: var(--free); }
-    .demo-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; font-size: 0.7rem; color: var(--ink-soft); }
-    .demo-legend span { display: inline-flex; align-items: center; gap: 5px; }
-    .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 10px; font-size: 0.68rem; color: var(--ink-soft); }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
 
-    section { padding: 58px 0; }
-    section h2 {
-      text-align: center; font-size: clamp(1.3rem, 4vw, 1.75rem);
-      font-weight: 800; margin-bottom: 8px;
-    }
-    section .lead { text-align: center; color: var(--ink-soft); margin-bottom: 34px; font-size: 0.95rem; }
+    /* ── Compact sections ── */
+    section { padding: 46px 0; }
+    section h2 { text-align: center; font-size: clamp(1.25rem, 3vw, 1.6rem); font-weight: 800; margin-bottom: 6px; }
+    section .lead { text-align: center; color: var(--ink-soft); margin-bottom: 28px; font-size: 0.92rem; }
 
-    /* ── Pain ── */
-    .pain-list { display: grid; gap: 13px; max-width: 660px; margin: 0 auto; }
-    .pain-item {
-      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-      padding: 15px 18px; display: flex; gap: 13px; align-items: flex-start;
-      font-size: 0.94rem;
-    }
-    .pain-item .p-icon { font-size: 1.35rem; flex-shrink: 0; }
-    .pain-item b { color: #ffb27a; }
-    .pain-close { text-align: center; margin-top: 28px; font-size: 1.08rem; font-weight: 700; }
-    .pain-close span { color: #7fa9ff; }
-
-    /* ── Contrast (vs calendar) ── */
+    /* Contrast: side by side (landscape) */
     .contrast { background: var(--bg-soft); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 720px; margin: 0 auto; }
-    @media (max-width: 620px) { .vs-grid { grid-template-columns: 1fr; } }
-    .vs-card { border-radius: 14px; padding: 22px 20px; }
+    .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 860px; margin: 0 auto; }
+    @media (max-width: 640px) { .vs-grid { grid-template-columns: 1fr; } }
+    .vs-card { border-radius: 14px; padding: 20px 20px; }
     .vs-old { background: var(--card); border: 1px solid var(--line); }
     .vs-new { background: linear-gradient(160deg, #1c2b4d, #17233d); border: 1px solid rgba(79,140,255,0.5); }
-    .vs-tag { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; }
+    .vs-tag { font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; }
     .vs-old .vs-tag { color: var(--ink-soft); }
     .vs-new .vs-tag { color: #7fa9ff; }
-    .vs-card h3 { font-size: 1.05rem; margin-bottom: 10px; }
+    .vs-card h3 { font-size: 1rem; margin-bottom: 8px; }
     .vs-card ul { list-style: none; }
-    .vs-card li { font-size: 0.88rem; padding: 5px 0; color: var(--ink-soft); }
+    .vs-card li { font-size: 0.86rem; padding: 4px 0; color: var(--ink-soft); }
     .vs-old li::before { content: "△ "; color: #6b7794; }
     .vs-new li::before { content: "◎ "; color: #7fa9ff; }
     .vs-new li { color: var(--ink); }
 
-    /* ── Features ── */
-    .feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    @media (max-width: 620px) { .feat-grid { grid-template-columns: 1fr; } }
-    .feat {
-      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-      padding: 22px 20px;
-    }
+    /* Features: horizontal row of 4 */
+    .feat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 860px) { .feat-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 460px) { .feat-grid { grid-template-columns: 1fr; } }
+    .feat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 16px; }
     .feat .f-icon {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 44px; height: 44px; border-radius: 10px;
-      background: var(--card-2); font-size: 1.4rem; margin-bottom: 12px;
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--card-2); font-size: 1.3rem; margin-bottom: 10px;
     }
-    .feat h3 { font-size: 1.02rem; margin-bottom: 8px; }
-    .feat p { font-size: 0.87rem; color: var(--ink-soft); }
+    .feat h3 { font-size: 0.96rem; margin-bottom: 6px; }
+    .feat p { font-size: 0.82rem; color: var(--ink-soft); line-height: 1.6; }
 
-    /* ── Pricing ── */
-    .pricing { background: var(--bg-soft); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    /* Pricing + final CTA in one landscape strip */
+    .close { background: var(--bg-soft); border-top: 1px solid var(--line); }
+    .close-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: center; }
+    @media (max-width: 780px) { .close-grid { grid-template-columns: 1fr; gap: 20px; } }
     .price-card {
-      max-width: 440px; margin: 0 auto; background: var(--card);
-      border: 2px solid var(--accent); border-radius: 18px;
-      padding: 34px 28px; text-align: center;
-      box-shadow: 0 12px 34px rgba(79,140,255,0.16);
+      background: var(--card); border: 2px solid var(--accent); border-radius: 18px;
+      padding: 26px 26px; box-shadow: 0 12px 34px rgba(79,140,255,0.16);
     }
-    .price-card .plan-name { font-weight: 700; color: #7fa9ff; letter-spacing: 1px; font-size: 0.85rem; }
-    .price-row { margin: 14px 0 4px; }
-    .price-old { color: var(--ink-soft); text-decoration: line-through; font-size: 1.1rem; margin-right: 10px; }
-    .price-now { font-size: 2.6rem; font-weight: 800; color: #fff; }
-    .price-now small { font-size: 1rem; font-weight: 700; }
-    .price-card .buyout { font-size: 0.88rem; font-weight: 700; color: var(--free); }
-    .price-card ul { list-style: none; margin: 20px 0; text-align: left; }
-    .price-card ul li { font-size: 0.9rem; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+    .price-card .plan-name { font-weight: 700; color: #7fa9ff; letter-spacing: 1px; font-size: 0.82rem; }
+    .price-row { margin: 10px 0 4px; }
+    .price-old { color: var(--ink-soft); text-decoration: line-through; font-size: 1.05rem; margin-right: 9px; }
+    .price-now { font-size: 2.4rem; font-weight: 800; color: #fff; }
+    .price-now small { font-size: 0.95rem; font-weight: 700; }
+    .price-card .buyout { font-size: 0.84rem; font-weight: 700; color: var(--free); }
+    .price-card ul { list-style: none; margin: 14px 0 0; }
+    .price-card ul li { font-size: 0.86rem; padding: 5px 0; border-bottom: 1px dashed var(--line); }
     .price-card ul li::before { content: "✓ "; color: var(--free); font-weight: 700; }
+    .close-cta h2 { text-align: left; font-size: clamp(1.3rem, 3vw, 1.7rem); margin-bottom: 8px; }
+    .close-cta p { color: var(--ink-soft); font-size: 0.92rem; margin-bottom: 18px; }
 
-    /* ── FAQ ── */
-    .faq-list { max-width: 660px; margin: 0 auto; }
-    .faq-item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; padding: 17px 20px; }
-    .faq-item .q { font-weight: 700; font-size: 0.94rem; }
+    /* FAQ compact 2-col */
+    .faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 940px; margin: 0 auto; }
+    @media (max-width: 700px) { .faq-grid { grid-template-columns: 1fr; } }
+    .faq-item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 15px 18px; }
+    .faq-item .q { font-weight: 700; font-size: 0.9rem; }
     .faq-item .q::before { content: "Q. "; color: #7fa9ff; }
-    .faq-item .a { font-size: 0.87rem; color: var(--ink-soft); margin-top: 7px; }
+    .faq-item .a { font-size: 0.83rem; color: var(--ink-soft); margin-top: 6px; }
     .faq-item .a::before { content: "A. "; color: #7fa9ff; font-weight: 700; }
 
-    /* ── Final CTA ── */
-    .final-cta { text-align: center; }
-    .final-cta .box {
-      background: linear-gradient(160deg, #1c2b4d, #16223c);
-      border: 1px solid rgba(79,140,255,0.5); border-radius: 20px;
-      padding: 44px 24px;
-    }
-
-    footer {
-      text-align: center; padding: 26px 16px; font-size: 0.74rem; color: var(--ink-soft);
-      border-top: 1px solid var(--line);
-    }
-    .disclaimer { max-width: 660px; margin: 0 auto 0; font-size: 0.72rem; color: #6b7794; line-height: 1.7; }
+    footer { text-align: center; padding: 24px 16px; font-size: 0.72rem; color: #6b7794; border-top: 1px solid var(--line); }
+    .disclaimer { max-width: 720px; margin: 0 auto; line-height: 1.7; }
   </style>
 </head>
 <body>
 
+  <!-- ══ HERO ══ -->
   <header class="hero">
     <div class="wrap">
-      <span class="brand">シフトリズム β</span>
-      <h1>3交代のあなたに、<br><span class="em">カレンダーじゃなく、体内時計を。</span></h1>
-      <p class="sub">早番・遅番・夜勤。シフトを入れるだけで「いつ寝て・いつ光を浴びて・いつ食べるか」を提案。<br>家族には"仕事時間"ではなく"回復時間"を共有します。</p>
+      <div class="hero-grid">
+        <div class="hero-left">
+          <span class="brand">シフトリズム β</span>
+          <h1>2交代・3交代のあなたに、<br><span class="em">カレンダーじゃなく、体内時計を。</span></h1>
+          <p class="sub">シフトを入れるだけで「いつ寝て・いつ光を浴びて・いつ食べるか」を提案。</p>
+          <ul class="hero-points">
+            <li><span class="pi">🛌</span><span><b>崩れない眠り方を提案</b> — 夜勤明け、何時に寝る?をアプリが教える</span></li>
+            <li><span class="pi">👨‍👩‍👧</span><span><b>"回復時間"を家族に共有</b> — 「今は睡眠中=起こさない」がひと目で伝わる</span></li>
+            <li><span class="pi">🔁</span><span><b>2交代も3交代もOK</b> — 日勤/夜勤も、早番/遅番/夜勤も、テンプレで一発</span></li>
+          </ul>
+          <div class="cta-wrap">
+            <a class="cta-btn js-cta" href="#register" data-loc="hero">事前登録する(無料)</a>
+            <p class="cta-note">事前登録の方は正式リリース時 <strong>¥1,480 → ¥980</strong> の早期割引</p>
+          </div>
+        </div>
 
-      <div class="demo">
-        <div class="demo-title">▼ 家族に共有される「今週のリズム」(イメージ)</div>
-        <div class="band-row"><span class="band-day">月</span><div class="band"><span class="seg s-sleep" style="width:29%"></span><span class="seg s-work-d" style="width:34%"></span><span class="seg s-free" style="width:37%"></span></div></div>
-        <div class="band-row"><span class="band-day">火</span><div class="band"><span class="seg s-sleep" style="width:29%"></span><span class="seg s-work-d" style="width:34%"></span><span class="seg s-free" style="width:37%"></span></div></div>
-        <div class="band-row"><span class="band-day">水</span><div class="band"><span class="seg s-free" style="width:20%"></span><span class="seg s-work-e" style="width:34%"></span><span class="seg s-sleep" style="width:46%"></span></div></div>
-        <div class="band-row"><span class="band-day">木</span><div class="band"><span class="seg s-free" style="width:20%"></span><span class="seg s-work-e" style="width:34%"></span><span class="seg s-sleep" style="width:46%"></span></div></div>
-        <div class="band-row"><span class="band-day">金</span><div class="band"><span class="seg s-work-n" style="width:30%"></span><span class="seg s-sleep" style="width:42%"></span><span class="seg s-free" style="width:28%"></span></div></div>
-        <div class="band-row"><span class="band-day">土</span><div class="band"><span class="seg s-work-n" style="width:30%"></span><span class="seg s-sleep" style="width:46%"></span><span class="seg s-free" style="width:24%"></span></div></div>
-        <div class="band-row"><span class="band-day">日</span><div class="band"><span class="seg s-sleep" style="width:33%"></span><span class="seg s-free" style="width:67%"></span></div></div>
-        <div class="demo-legend">
-          <span><i class="dot s-work-d"></i>早番</span>
-          <span><i class="dot s-work-e"></i>遅番</span>
-          <span><i class="dot s-work-n"></i>夜勤</span>
-          <span><i class="dot s-sleep"></i>睡眠(起こさないで)</span>
-          <span><i class="dot s-free"></i>フリー</span>
+        <div class="hero-right">
+          <div class="panel">
+            <div class="panel-head">▼ 家族に共有される「今週のリズム」<b>(2交代・3交代 両対応)</b></div>
+
+            <div class="mini">
+              <div class="mini-title"><span class="badge">3交代</span>早番 → 遅番 → 夜勤</div>
+              <div class="band-row"><span class="band-day">月</span><div class="band"><span class="seg s-sleep" style="width:29%"></span><span class="seg s-day" style="width:34%"></span><span class="seg s-free" style="width:37%"></span></div></div>
+              <div class="band-row"><span class="band-day">火</span><div class="band"><span class="seg s-free" style="width:20%"></span><span class="seg s-eve" style="width:34%"></span><span class="seg s-sleep" style="width:46%"></span></div></div>
+              <div class="band-row"><span class="band-day">水</span><div class="band"><span class="seg s-night" style="width:30%"></span><span class="seg s-sleep" style="width:42%"></span><span class="seg s-free" style="width:28%"></span></div></div>
+              <div class="band-row"><span class="band-day">木</span><div class="band"><span class="seg s-night" style="width:30%"></span><span class="seg s-sleep" style="width:46%"></span><span class="seg s-free" style="width:24%"></span></div></div>
+              <div class="band-row"><span class="band-day">金</span><div class="band"><span class="seg s-sleep" style="width:33%"></span><span class="seg s-free" style="width:67%"></span></div></div>
+            </div>
+
+            <div class="mini">
+              <div class="mini-title"><span class="badge">2交代</span>日勤 ⇄ 夜勤</div>
+              <div class="band-row"><span class="band-day">月</span><div class="band"><span class="seg s-sleep" style="width:29%"></span><span class="seg s-day" style="width:50%"></span><span class="seg s-free" style="width:21%"></span></div></div>
+              <div class="band-row"><span class="band-day">火</span><div class="band"><span class="seg s-sleep" style="width:29%"></span><span class="seg s-day" style="width:50%"></span><span class="seg s-free" style="width:21%"></span></div></div>
+              <div class="band-row"><span class="band-day">水</span><div class="band"><span class="seg s-night" style="width:8%"></span><span class="seg s-free" style="width:16%"></span><span class="seg s-sleep" style="width:33%"></span><span class="seg s-free" style="width:6%"></span><span class="seg s-night" style="width:37%"></span></div></div>
+              <div class="band-row"><span class="band-day">木</span><div class="band"><span class="seg s-night" style="width:8%"></span><span class="seg s-sleep" style="width:50%"></span><span class="seg s-free" style="width:5%"></span><span class="seg s-night" style="width:37%"></span></div></div>
+              <div class="band-row"><span class="band-day">金</span><div class="band"><span class="seg s-night" style="width:8%"></span><span class="seg s-sleep" style="width:50%"></span><span class="seg s-free" style="width:42%"></span></div></div>
+            </div>
+
+            <div class="legend">
+              <span><i class="dot s-day"></i>日勤/早番</span>
+              <span><i class="dot s-eve"></i>遅番</span>
+              <span><i class="dot s-night"></i>夜勤</span>
+              <span><i class="dot s-sleep"></i>睡眠(起こさないで)</span>
+              <span><i class="dot s-free"></i>フリー</span>
+            </div>
+          </div>
         </div>
       </div>
-
-      <a class="cta-btn js-cta" href="#register" data-loc="hero">事前登録する(無料)</a>
-      <p class="cta-note">事前登録の方は正式リリース時 <strong>¥1,480 → ¥980</strong> の早期割引</p>
     </div>
   </header>
 
-  <section class="pain">
-    <div class="wrap">
-      <h2>3交代の、この感じ。</h2>
-      <p class="lead">シフトを「書く」アプリはある。でも、体はそれじゃ回復しない。</p>
-      <div class="pain-list">
-        <div class="pain-item"><span class="p-icon">🌙</span><span>夜勤明け、<b>いつ寝て何時に起きればいいのか毎回わからない</b>。気づけば夕方まで寝て、夜また眠れない。</span></div>
-        <div class="pain-item"><span class="p-icon">🔄</span><span>遅番から夜勤への切り替えで<b>体がついていかず、常にだるい</b>。どの並びが自分にキツいのかも把握できてない。</span></div>
-        <div class="pain-item"><span class="p-icon">🤫</span><span>昼に寝ていると<b>家族に起こされる</b>。「今寝てる」が伝わらず、予定もいつも噛み合わない。</span></div>
-        <div class="pain-item"><span class="p-icon">📅</span><span>シフトカレンダーは持ってる。けど<b>予定を色分けするだけ</b>で、体調は何も良くならない。</span></div>
-      </div>
-      <p class="pain-close">シフトは、予定表じゃない。<span>あなたの体内時計への"入力"です。</span></p>
-    </div>
-  </section>
-
+  <!-- ══ CONTRAST ══ -->
   <section class="contrast">
     <div class="wrap">
       <h2>ふつうのシフトアプリと、何が違う?</h2>
@@ -250,7 +256,6 @@
           <ul>
             <li>予定を色分けして表示</li>
             <li>仕事の時間を家族に共有</li>
-            <li>メモを書ける</li>
             <li>…で、体調は自分でなんとかする</li>
           </ul>
         </div>
@@ -261,103 +266,94 @@
             <li>寝る/光/食事の時間を提案</li>
             <li>"回復時間"を家族に共有</li>
             <li>体調ログでキツい並びを発見</li>
-            <li>カレンダーじゃなく、体内時計を</li>
           </ul>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- ══ FEATURES ══ -->
   <section class="features">
     <div class="wrap">
       <h2>できること</h2>
-      <p class="lead">むずかしい設定はなし。シフトの型を選ぶだけで動き出します。</p>
+      <p class="lead">シフトの型を選ぶだけ。2交代でも3交代でも、すぐ動き出します。</p>
       <div class="feat-grid">
         <div class="feat">
           <span class="f-icon">🛌</span>
-          <h3>睡眠・光・食事のタイミング提案</h3>
-          <p>各勤務日に「何時に寝て、何時に光を浴びて、いつ食べると崩れにくいか」を提示。交代勤務で知られた整え方を、あなたのシフトに当てはめます。</p>
+          <h3>眠り・光・食事の提案</h3>
+          <p>各勤務日に「何時に寝て、いつ光を浴び、いつ食べると崩れにくいか」を提示。</p>
         </div>
         <div class="feat">
           <span class="f-icon">👨‍👩‍👧</span>
-          <h3>"回復時間"の家族共有</h3>
-          <p>今週の「仕事/睡眠/フリー」を1枚の画像に。LINEで送れば、家族は相手不要でひと目で理解。「昼は寝てる、起こさない」が伝わります。</p>
+          <h3>回復時間の家族共有</h3>
+          <p>今週のリズムを1枚の画像に。LINEで送れば家族はアプリ不要でひと目で理解。</p>
         </div>
         <div class="feat">
           <span class="f-icon">📈</span>
-          <h3>体調ログでパターン発見</h3>
-          <p>就寝・起床と体調をワンタップ記録。「夜勤→早番の並びが一番きつい」など、自分だけの傾向が見えてきます。</p>
+          <h3>体調ログで傾向発見</h3>
+          <p>就寝・起床と体調をワンタップ。自分にキツいシフトの並びが見えてきます。</p>
         </div>
         <div class="feat">
           <span class="f-icon">📴</span>
-          <h3>オフラインで動く・広告なし</h3>
-          <p>データは端末内に保存。休憩中の圏外でも動きます。買い切りなので、うるさい広告も月額もありません。</p>
+          <h3>オフライン・広告なし</h3>
+          <p>データは端末内に保存。圏外でも動作。買い切りなので月額も広告もなし。</p>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="pricing">
+  <!-- ══ PRICING + FINAL CTA (landscape strip) ══ -->
+  <section class="close" id="register">
     <div class="wrap">
-      <h2>料金</h2>
-      <p class="lead">サブスクではありません。一度買えば、ずっと使えます。</p>
-      <div class="price-card">
-        <div class="plan-name">買い切りプラン</div>
-        <div class="price-row">
-          <span class="price-old">¥1,480</span><span class="price-now">¥980<small>(税込)</small></span>
+      <div class="close-grid">
+        <div class="price-card">
+          <div class="plan-name">買い切りプラン</div>
+          <div class="price-row"><span class="price-old">¥1,480</span><span class="price-now">¥980<small>(税込)</small></span></div>
+          <div class="buyout">事前登録者限定の早期割引 / 月額なし</div>
+          <ul>
+            <li>2交代・3交代テンプレ、パターン無制限</li>
+            <li>眠り・光・食事のタイミング提案</li>
+            <li>家族共有ビュー(画像で送れる)</li>
+            <li>体調ログと傾向分析・アップデート無料</li>
+          </ul>
         </div>
-        <div class="buyout">事前登録者限定の早期割引 / 月額費用なし</div>
-        <ul>
-          <li>シフトパターン無制限・全期間の提案</li>
-          <li>睡眠・光・食事のタイミング提案</li>
-          <li>家族共有ビュー(画像で送れる)</li>
-          <li>体調ログと傾向分析</li>
-          <li>今後のアップデートも追加費用なし</li>
-        </ul>
-        <a class="cta-btn js-cta" href="#register" data-loc="pricing">事前登録する(無料)</a>
-        <p class="cta-note">登録はメールアドレスのみ。リリース時にご案内します。</p>
+        <div class="close-cta">
+          <h2>体を、シフトに壊させない。</h2>
+          <p>事前登録は10秒。リリース時に早期割引(¥980)をご案内します。登録者限定でβ版に先行アクセス+¥500オフ。</p>
+          <a class="cta-btn js-cta js-form" href="#" data-loc="final">メールアドレスで事前登録</a>
+          <p class="cta-note">登録はメールアドレスのみ。勤務形態(2交代/3交代)を1問うかがいます。</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="faq">
+  <!-- ══ FAQ ══ -->
+  <section class="features">
     <div class="wrap">
       <h2>よくある質問</h2>
-      <div class="faq-list">
+      <div class="faq-grid">
         <div class="faq-item">
-          <p class="q">2交代や不規則なシフトでも使えますか?</p>
-          <p class="a">はい。早番/遅番/夜勤/休を自由に組めるので、2交代や変則勤務にも対応します。まずは3交代の方に一番フィットする設計です。</p>
+          <p class="q">2交代でも3交代でも使える?</p>
+          <p class="a">はい。両方のテンプレを用意。日勤/夜勤の2交代も、早番/遅番/夜勤の3交代も、変則勤務も組めます。</p>
         </div>
         <div class="faq-item">
-          <p class="q">家族にもアプリのインストールが必要?</p>
-          <p class="a">不要です。共有は「今週のリズム」を画像やリンクで送る形なので、ご家族はLINE等で見るだけでOKです。</p>
+          <p class="q">家族もインストールが必要?</p>
+          <p class="a">不要です。共有は「今週のリズム」を画像やリンクで送る形。ご家族はLINE等で見るだけでOK。</p>
         </div>
         <div class="faq-item">
-          <p class="q">提案は医学的なものですか?</p>
-          <p class="a">いいえ。交代勤務で一般に知られた生活リズムの整え方をもとにしたガイドで、診断や治療ではありません。体調が続く場合は医療機関にご相談ください。</p>
+          <p class="q">提案は医学的なもの?</p>
+          <p class="a">いいえ。交代勤務で一般に知られた整え方をもとにしたガイドで、診断や治療ではありません。</p>
         </div>
         <div class="faq-item">
-          <p class="q">いつリリースされますか?</p>
-          <p class="a">2026年内を予定。事前登録の方から順にβ版をご案内します。スマホ・PCのブラウザで動き、ホーム画面に追加できます。</p>
+          <p class="q">いつリリース?</p>
+          <p class="a">2026年内を予定。登録の方から順にβ版をご案内。スマホ・PCのブラウザで動きます。</p>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="final-cta" id="register">
-    <div class="wrap">
-      <div class="box">
-        <h2>体を、シフトに壊させない。</h2>
-        <p class="lead">事前登録は10秒。リリース時に早期割引(¥980)をご案内します。</p>
-        <a class="cta-btn js-cta js-form" href="#" data-loc="final">メールアドレスで事前登録</a>
-        <p class="cta-note">登録者限定: β版の先行アクセス+<strong>¥500オフ</strong></p>
       </div>
     </div>
   </section>
 
   <footer>
-    <p class="disclaimer">シフトリズム(仮称)は個人開発のプロダクトです。仕様・価格・リリース時期は変更になる場合があります。本アプリの提案は一般的な生活リズムのガイドであり、医療上の助言ではありません。</p>
-    <p style="margin-top:10px">&copy; 2026 シフトリズム 開発チーム</p>
+    <p class="disclaimer">シフトリズム(仮称)は個人開発のプロダクトです。仕様・価格・リリース時期は変更になる場合があります。本アプリの提案は一般的な生活リズムのガイドであり、医療上の助言ではありません。&nbsp; &copy; 2026 シフトリズム 開発チーム</p>
   </footer>
 
   <script>
@@ -371,7 +367,6 @@
         }
       });
     });
-
     document.querySelectorAll('.js-form').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.preventDefault();
