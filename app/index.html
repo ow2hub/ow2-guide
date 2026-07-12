@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シフトリズム — 動く試作</title>
+<style>
+  :root{
+    --bg:#0d1220; --bg2:#141b2e; --card:#1a2338; --card2:#202b45;
+    --ink:#e8edf7; --sub:#93a1c0; --line:#2a3552;
+    --day:#f4b740; --night:#6c7bd6; --off:#4a5570;
+    --sleep:#35507a; --free:#3fae7a; --accent:#4f8cff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);
+    font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .app{max-width:440px;margin:0 auto;padding:0 0 40px}
+  .proto{background:#3a2a12;color:#ffd479;text-align:center;font-size:.72rem;padding:5px;letter-spacing:1px}
+  header.top{padding:16px 18px 12px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:8px}
+  header.top .logo{font-weight:800;color:#7fa9ff;letter-spacing:1px}
+  header.top .tag{font-size:.66rem;color:var(--sub);border:1px solid var(--line);border-radius:99px;padding:1px 9px}
+  .sec{padding:18px}
+  .sec h2{font-size:.82rem;color:var(--sub);letter-spacing:1px;margin-bottom:12px;font-weight:700}
+
+  /* block entry */
+  .entry{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .types{display:flex;gap:8px;margin-bottom:12px}
+  .type-btn{flex:1;border:1.5px solid var(--line);background:var(--card2);color:var(--ink);
+    border-radius:10px;padding:10px 0;font-size:.9rem;font-weight:700;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:3px;transition:.15s}
+  .type-btn .ic{font-size:1.2rem}
+  .type-btn[data-k="day"].on{border-color:var(--day);background:rgba(244,183,64,.16)}
+  .type-btn[data-k="night"].on{border-color:var(--night);background:rgba(108,123,214,.18)}
+  .type-btn[data-k="off"].on{border-color:var(--off);background:rgba(74,85,112,.28)}
+  .row{display:flex;align-items:center;gap:12px}
+  .stepper{display:flex;align-items:center;gap:0;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+  .stepper button{width:42px;height:42px;background:var(--card2);color:var(--ink);border:none;font-size:1.3rem;cursor:pointer}
+  .stepper .n{width:56px;text-align:center;font-size:1.1rem;font-weight:800}
+  .stepper .n small{font-size:.66rem;color:var(--sub);font-weight:400;display:block;margin-top:-4px}
+  .add{flex:1;background:var(--accent);color:#fff;border:none;border-radius:10px;
+    height:42px;font-size:.95rem;font-weight:800;cursor:pointer}
+  .mini-actions{display:flex;gap:10px;margin-top:10px;justify-content:flex-end}
+  .mini-actions button{background:none;border:none;color:var(--sub);font-size:.76rem;cursor:pointer;text-decoration:underline}
+
+  /* calendar */
+  .cal{display:flex;flex-direction:column;gap:6px}
+  .d{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px;cursor:pointer;transition:.12s}
+  .d.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .d .date{width:64px;flex-shrink:0;font-size:.8rem;color:var(--sub)}
+  .d .date b{color:var(--ink);font-size:.92rem}
+  .d .date .sat{color:#7fb0ff}.d .date .sun{color:#ff8a8a}
+  .pill{flex:1;border-radius:8px;padding:5px 10px;font-size:.85rem;font-weight:800;display:flex;align-items:center;gap:6px}
+  .pill.day{background:rgba(244,183,64,.18);color:#f4b740}
+  .pill.night{background:rgba(108,123,214,.22);color:#aab4ee}
+  .pill.off{background:rgba(74,85,112,.25);color:#aeb8d0}
+  .pill .t{font-size:.68rem;font-weight:600;opacity:.85;margin-left:auto}
+  .early{flex-shrink:0;font-size:.66rem;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;border:1px solid var(--line);color:var(--sub);background:var(--card2)}
+  .early.on{background:#5a3d10;border-color:#f4b740;color:#ffd479}
+
+  /* suggestion */
+  .sug{background:linear-gradient(160deg,#1c2b4d,#16223c);border:1px solid rgba(79,140,255,.5);border-radius:14px;padding:16px}
+  .sug .head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(127,169,255,.25)}
+  .sug .head .big{font-size:1.5rem}
+  .sug .head .ttl{font-weight:800;font-size:1.02rem}
+  .sug .head .sm{font-size:.72rem;color:var(--sub)}
+  .sug ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+  .sug li{display:flex;gap:10px;font-size:.86rem;align-items:flex-start}
+  .sug li .k{flex-shrink:0;width:64px;color:#9fb4e6;font-weight:700;font-size:.78rem;padding-top:1px}
+  .sug li .v{flex:1}
+  .sug li .v b{color:#fff}
+  .branch{margin-top:12px;background:rgba(10,16,32,.5);border-radius:8px;padding:10px 12px;font-size:.78rem;color:var(--sub)}
+  .branch b{color:#ffd479}
+
+  /* week band */
+  .band-wrap{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .brow{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+  .brow .bd{width:26px;font-size:.7rem;color:var(--sub);flex-shrink:0}
+  .band{flex:1;height:16px;border-radius:4px;display:flex;overflow:hidden;background:#0b1120}
+  .seg{height:100%}
+  .s-sleep{background:var(--sleep)}.s-work-day{background:var(--day)}.s-work-night{background:var(--night)}.s-free{background:var(--free)}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:11px;font-size:.68rem;color:var(--sub)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+  .share{width:100%;margin-top:12px;background:var(--free);color:#04240f;border:none;border-radius:10px;height:42px;font-weight:800;font-size:.9rem;cursor:pointer}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#04240f;color:#c9f5da;border:1px solid var(--free);padding:10px 18px;border-radius:99px;font-size:.82rem;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+  .hint{font-size:.72rem;color:var(--sub);margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="proto">◍ 動く試作(プロトタイプ)— データは端末内のみ</div>
+  <header class="top">
+    <span class="logo">シフトリズム</span>
+    <span class="tag">2交代 / 昼・夜・休</span>
+  </header>
+
+  <!-- 1. block entry -->
+  <section class="sec">
+    <h2>① シフトを入れる（まとめてポン）</h2>
+    <div class="entry">
+      <div class="types">
+        <button class="type-btn on" data-k="day"><span class="ic">☀️</span>昼勤</button>
+        <button class="type-btn" data-k="night"><span class="ic">🌙</span>夜勤</button>
+        <button class="type-btn" data-k="off"><span class="ic">😴</span>休み</button>
+      </div>
+      <div class="row">
+        <div class="stepper">
+          <button id="minus">−</button>
+          <div class="n"><span id="cnt">4</span><small>日ぶん</small></div>
+          <button id="plus">＋</button>
+        </div>
+        <button class="add" id="add">＋ 追加する</button>
+      </div>
+      <div class="mini-actions">
+        <button id="undo">1つ戻す</button>
+        <button id="clear">ぜんぶ消す</button>
+      </div>
+    </div>
+    <p class="hint">周期で回らなくてOK。確定した並びを「昼勤×4」みたいに置くだけ。</p>
+  </section>
+
+  <!-- 2. calendar -->
+  <section class="sec">
+    <h2>② 入ったシフト（タップで詳細・「早」で早出切替）</h2>
+    <div class="cal" id="cal"></div>
+  </section>
+
+  <!-- 3. suggestion -->
+  <section class="sec" id="sugSec">
+    <h2>③ その日の整え方</h2>
+    <div class="sug" id="sug"></div>
+  </section>
+
+  <!-- 4. family share -->
+  <section class="sec">
+    <h2>④ 家族に共有（“回復時間”が伝わる今週）</h2>
+    <div class="band-wrap">
+      <div id="bands"></div>
+      <div class="legend">
+        <span><i class="dot s-work-day"></i>昼勤</span>
+        <span><i class="dot s-work-night"></i>夜勤</span>
+        <span><i class="dot s-sleep"></i>睡眠(起こさないで)</span>
+        <span><i class="dot s-free"></i>フリー</span>
+      </div>
+      <button class="share" id="share">📷 画像にして家族にLINEで送る</button>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const WD=['日','月','火','水','木','金','土'];
+const TYPES={
+  day:{k:'day',label:'昼勤',start:'8:30',end:'19:00',early:{start:'8:00',end:'18:30'}},
+  night:{k:'night',label:'夜勤',start:'22:00',end:'翌8:30',early:{start:'21:00',end:'翌8:00'}},
+  off:{k:'off',label:'休み'}
+};
+let pickType='day', cnt=4, sel=0;
+let days=[];
+
+// seed with owner's real (non-fixed) sequence
+function seed(){
+  const runs=[['day',4],['off',1],['night',4],['off',3],['day',2],['off',2],['night',2],['off',3]];
+  const t=new Date(); t.setHours(0,0,0,0);
+  days=[];
+  runs.forEach(([k,n])=>{for(let i=0;i<n;i++)days.push({type:k,early:false});});
+  days=days.map((d,i)=>({...d,date:addDays(t,i)}));
+}
+function addDays(base,n){const d=new Date(base);d.setDate(d.getDate()+n);return d;}
+function lastDate(){return days.length?days[days.length-1].date:(()=>{const t=new Date();t.setHours(0,0,0,0);return addDays(t,-1);})();}
+
+function render(){
+  // calendar
+  const cal=document.getElementById('cal'); cal.innerHTML='';
+  days.forEach((d,i)=>{
+    const T=TYPES[d.type];
+    const el=document.createElement('div');
+    el.className='d'+(i===sel?' sel':'');
+    const wd=d.date.getDay();
+    const wdc=wd===6?'sat':wd===0?'sun':'';
+    let timeTxt = d.type==='off' ? '' : (d.early? `${T.early.start}–${T.early.end}` : `${T.start}–${T.end}`);
+    let earlyBtn = d.type==='off' ? '' :
+      `<button class="early${d.early?' on':''}" data-i="${i}">早</button>`;
+    el.innerHTML=`
+      <div class="date"><span class="${wdc}">${d.date.getMonth()+1}/${d.date.getDate()}(${WD[wd]})</span></div>
+      <div class="pill ${d.type}">${d.type==='day'?'☀️':d.type==='night'?'🌙':'😴'} ${T.label}${d.early?'・早出':''}<span class="t">${timeTxt}</span></div>
+      ${earlyBtn}`;
+    el.addEventListener('click',e=>{ if(e.target.classList.contains('early'))return; sel=i; render(); });
+    cal.appendChild(el);
+  });
+  cal.querySelectorAll('.early').forEach(b=>b.addEventListener('click',e=>{
+    const i=+e.target.dataset.i; days[i].early=!days[i].early; render();
+  }));
+  renderSug();
+  renderBands();
+}
+
+function renderSug(){
+  const sec=document.getElementById('sugSec'), box=document.getElementById('sug');
+  if(!days.length){sec.style.display='none';return;} sec.style.display='';
+  const d=days[sel], next=days[sel+1], prev=days[sel-1];
+  const early=d.early;
+  let icon,ttl,sm,items=[],branch='';
+  if(d.type==='day'){
+    icon='☀️'; ttl='昼勤の日'; sm=early?'早出 8:00–18:30':'8:30–19:00';
+    const bed=early?'23:00':'23:30', wake=early?'6:15':'6:45';
+    items=[
+      ['就寝/起床',`<b>${bed}就寝 / ${wake}起床</b>（約7時間）`],
+      ['光','起きたらすぐカーテンを開ける。通勤で自然光を浴びる'],
+      ['食事',`朝${early?'6:30':'7:00'}／昼(休憩)／夕は帰宅後 軽め`],
+      ['仮眠','帰宅後の仮眠はNG（夜眠れなくなる）。眠ければ昼休憩に10分'],
+      ['カフェイン',`昼休憩まで。遅くとも ${early?'14:00':'14:30'}`]
+    ];
+  } else if(d.type==='night'){
+    icon='🌙'; ttl='夜勤の日'; sm=early?'早出 21:00–翌8:00':'22:00–翌8:30';
+    const nap=early?'13:00–17:00':'14:00–18:00', caf=early?'3:00':'4:00';
+    items=[
+      ['出勤前',`<b>${nap} に主睡眠（約4時間）</b>を固める`],
+      ['光','勤務中は明るく保つ／帰宅時はサングラス・帽子で光を避ける'],
+      ['食事','出勤前に主食／深夜1–2時に軽食／明けの朝は軽め'],
+      ['仮眠(勤務中)','眠気ピークの 2:00–4:00 に 20–30分'],
+      ['カフェイン',`前半に。明け方 ${caf} 以降は摂らない`]
+    ];
+    const nx = !next? '' : next.type==='night'
+      ? '<b>翌朝の明け：</b>また夜勤なので、帰宅後 9:30〜14:00 にしっかり寝て夜勤リズムを維持。'
+      : '<b>翌朝の明け：</b>次が'+(next.type==='off'?'休み':'昼勤')+'なので、昼の睡眠は2〜3時間で切り上げ→夜に早め就寝でリセット。';
+    branch=nx;
+  } else {
+    icon='😴'; ttl='休みの日';
+    const resetting = prev && prev.type==='night';
+    sm = resetting?'夜勤明けからのリセット日':'';
+    items = resetting ? [
+      ['睡眠','昼の寝すぎに注意。2〜3時間で切り上げ、夜に早め就寝で通常リズムへ'],
+      ['光','日中はしっかり光を浴びる'],
+      ['用事','買い物や家族の予定はこの日に寄せると回しやすい']
+    ] : [
+      ['睡眠','起床時刻を大きくズラさない（寝だめしすぎない）'],
+      ['過ごし方','次の勤務が昼か夜かで前日夜の就寝時刻を寄せておく']
+    ];
+  }
+  box.innerHTML=`
+    <div class="head"><span class="big">${icon}</span>
+      <div><div class="ttl">${d.date.getMonth()+1}/${d.date.getDate()}（${WD[d.date.getDay()]}） ${ttl}</div>
+      <div class="sm">${sm||''}</div></div></div>
+    <ul>${items.map(([k,v])=>`<li><span class="k">${k}</span><span class="v">${v}</span></li>`).join('')}</ul>
+    ${branch?`<div class="branch">${branch}</div>`:''}`;
+}
+
+// simplified 24h bands for family share (first 7 days)
+function bandSegs(d){
+  if(d.type==='day') return [['s-sleep',28],['s-free',7],['s-work-day',44],['s-free',21]];
+  if(d.type==='night') return [['s-work-night',35],['s-free',6],['s-sleep',27],['s-free',24],['s-work-night',8]];
+  return [['s-sleep',33],['s-free',67]];
+}
+function renderBands(){
+  const box=document.getElementById('bands'); box.innerHTML='';
+  days.slice(0,7).forEach(d=>{
+    const row=document.createElement('div'); row.className='brow';
+    const segs=bandSegs(d).map(([c,w])=>`<span class="seg ${c}" style="width:${w}%"></span>`).join('');
+    row.innerHTML=`<span class="bd">${WD[d.date.getDay()]}</span><div class="band">${segs}</div>`;
+    box.appendChild(row);
+  });
+}
+
+// controls
+document.querySelectorAll('.type-btn').forEach(b=>b.addEventListener('click',()=>{
+  pickType=b.dataset.k;
+  document.querySelectorAll('.type-btn').forEach(x=>x.classList.toggle('on',x===b));
+}));
+document.getElementById('plus').onclick=()=>{cnt=Math.min(14,cnt+1);document.getElementById('cnt').textContent=cnt;};
+document.getElementById('minus').onclick=()=>{cnt=Math.max(1,cnt-1);document.getElementById('cnt').textContent=cnt;};
+document.getElementById('add').onclick=()=>{
+  let base=lastDate();
+  for(let i=1;i<=cnt;i++) days.push({type:pickType,early:false,date:addDays(base,i)});
+  sel=days.length-cnt; render();
+  toast(`${TYPES[pickType].label} を ${cnt}日 追加`);
+};
+document.getElementById('undo').onclick=()=>{ if(days.length){days.pop(); sel=Math.min(sel,days.length-1);} render(); };
+document.getElementById('clear').onclick=()=>{ days=[]; sel=0; render(); };
+document.getElementById('share').onclick=()=>toast('（試作）今週のリズムを画像にして共有します');
+
+let tmr;
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tmr);tmr=setTimeout(()=>t.classList.remove('show'),1800);}
+
+// init: select first night day so the suggestion is meaningful
+seed();
+sel=days.findIndex(d=>d.type==='night'); if(sel<0)sel=0;
+render();
+</script>
+</body>
+</html>
