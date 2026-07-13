@@ -9,64 +9,81 @@
   body{background:var(--bg);color:var(--ink);
     font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif;
     line-height:1.6;-webkit-font-smoothing:antialiased}
-  .app{max-width:440px;margin:0 auto;padding:0 0 40px}
+  .app{max-width:460px;margin:0 auto;padding:0 0 40px}
   .proto{background:#3a2a12;color:#ffd479;text-align:center;font-size:.72rem;padding:5px;letter-spacing:1px}
   header.top{padding:16px 18px 12px;border-bottom:1px solid var(--line);
     display:flex;align-items:center;gap:8px}
   header.top .logo{font-weight:800;color:#7fa9ff;letter-spacing:1px}
   header.top .tag{font-size:.66rem;color:var(--sub);border:1px solid var(--line);border-radius:99px;padding:1px 9px}
-  .sec{padding:18px}
+  .sec{padding:16px 18px}
   .sec h2{font-size:.82rem;color:var(--sub);letter-spacing:1px;margin-bottom:12px;font-weight:700}
 
   /* block entry */
   .entry{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
   .types{display:flex;gap:8px;margin-bottom:12px}
   .type-btn{flex:1;border:1.5px solid var(--line);background:var(--card2);color:var(--ink);
-    border-radius:10px;padding:10px 0;font-size:.9rem;font-weight:700;cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;gap:3px;transition:.15s}
-  .type-btn .ic{font-size:1.2rem}
+    border-radius:10px;padding:9px 0;font-size:.88rem;font-weight:700;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:2px;transition:.15s}
+  .type-btn .ic{font-size:1.15rem}
   .type-btn[data-k="day"].on{border-color:var(--day);background:rgba(244,183,64,.16)}
   .type-btn[data-k="night"].on{border-color:var(--night);background:rgba(108,123,214,.18)}
   .type-btn[data-k="off"].on{border-color:var(--off);background:rgba(74,85,112,.28)}
   .row{display:flex;align-items:center;gap:12px}
-  .stepper{display:flex;align-items:center;gap:0;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
-  .stepper button{width:42px;height:42px;background:var(--card2);color:var(--ink);border:none;font-size:1.3rem;cursor:pointer}
-  .stepper .n{width:56px;text-align:center;font-size:1.1rem;font-weight:800}
-  .stepper .n small{font-size:.66rem;color:var(--sub);font-weight:400;display:block;margin-top:-4px}
+  .stepper{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+  .stepper button{width:40px;height:42px;background:var(--card2);color:var(--ink);border:none;font-size:1.3rem;cursor:pointer}
+  .stepper .n{width:54px;text-align:center;font-size:1.1rem;font-weight:800}
+  .stepper .n small{font-size:.64rem;color:var(--sub);font-weight:400;display:block;margin-top:-4px}
   .add{flex:1;background:var(--accent);color:#fff;border:none;border-radius:10px;
     height:42px;font-size:.95rem;font-weight:800;cursor:pointer}
-  .mini-actions{display:flex;gap:10px;margin-top:10px;justify-content:flex-end}
-  .mini-actions button{background:none;border:none;color:var(--sub);font-size:.76rem;cursor:pointer;text-decoration:underline}
+  .hint{font-size:.72rem;color:var(--sub);margin-top:8px;text-align:center}
 
   /* calendar */
-  .cal{display:flex;flex-direction:column;gap:6px}
-  .d{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
-    border-radius:10px;padding:8px 10px;cursor:pointer;transition:.12s}
-  .d.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
-  .d .date{width:64px;flex-shrink:0;font-size:.8rem;color:var(--sub)}
-  .d .date b{color:var(--ink);font-size:.92rem}
-  .d .date .sat{color:#7fb0ff}.d .date .sun{color:#ff8a8a}
-  .pill{flex:1;border-radius:8px;padding:5px 10px;font-size:.85rem;font-weight:800;display:flex;align-items:center;gap:6px}
-  .pill.day{background:rgba(244,183,64,.18);color:#f4b740}
-  .pill.night{background:rgba(108,123,214,.22);color:#aab4ee}
-  .pill.off{background:rgba(74,85,112,.25);color:#aeb8d0}
-  .pill .t{font-size:.68rem;font-weight:600;opacity:.85;margin-left:auto}
-  .early{flex-shrink:0;font-size:.66rem;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;border:1px solid var(--line);color:var(--sub);background:var(--card2)}
-  .early.on{background:#5a3d10;border-color:#f4b740;color:#ffd479}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .cal-head .mo{font-size:1.05rem;font-weight:800}
+  .cal-head button{background:var(--card2);border:1px solid var(--line);color:var(--ink);
+    width:36px;height:36px;border-radius:9px;font-size:1.1rem;cursor:pointer}
+  .cal-actions{display:flex;gap:10px;margin-top:10px;justify-content:flex-end}
+  .cal-actions button{background:none;border:none;color:var(--sub);font-size:.74rem;cursor:pointer;text-decoration:underline}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .wd{text-align:center;font-size:.68rem;color:var(--sub);padding-bottom:2px}
+  .wd.sat{color:#7fb0ff}.wd.sun{color:#ff8a8a}
+  .cell{position:relative;aspect-ratio:1/1;border:1px solid var(--line);border-radius:9px;
+    background:var(--card);cursor:pointer;padding:4px 5px;display:flex;flex-direction:column;
+    align-items:flex-start;transition:.1s;overflow:hidden}
+  .cell .num{font-size:.7rem;color:var(--sub);line-height:1}
+  .cell .ic{flex:1;display:flex;align-items:center;justify-content:center;width:100%;font-size:1.15rem}
+  .cell .lbl{font-size:.6rem;font-weight:800;text-align:center;width:100%;line-height:1;padding-bottom:1px}
+  .cell.out{opacity:.28;pointer-events:none}
+  .cell.day{background:rgba(244,183,64,.16);border-color:rgba(244,183,64,.4)}
+  .cell.day .lbl{color:#f4b740}
+  .cell.night{background:rgba(108,123,214,.2);border-color:rgba(108,123,214,.5)}
+  .cell.night .lbl{color:#aab4ee}
+  .cell.off{background:rgba(74,85,112,.16)}
+  .cell.off .lbl{color:#8f9cbb}
+  .cell.sel{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+  .cell .ebadge{position:absolute;top:2px;right:3px;font-size:.52rem;font-weight:800;color:#ffd479;background:#5a3d10;border-radius:4px;padding:0 3px}
+  .cal-legend{display:flex;gap:12px;justify-content:center;margin-top:12px;font-size:.68rem;color:var(--sub)}
+  .cal-legend span{display:inline-flex;align-items:center;gap:5px}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .sw.day{background:var(--day)}.sw.night{background:var(--night)}.sw.off{background:var(--off)}
 
   /* suggestion */
   .sug{background:linear-gradient(160deg,#1c2b4d,#16223c);border:1px solid rgba(79,140,255,.5);border-radius:14px;padding:16px}
-  .sug .head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(127,169,255,.25)}
+  .sug .head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(127,169,255,.25)}
   .sug .head .big{font-size:1.5rem}
   .sug .head .ttl{font-weight:800;font-size:1.02rem}
   .sug .head .sm{font-size:.72rem;color:var(--sub)}
+  .sug .head .etgl{margin-left:auto;flex-shrink:0;font-size:.72rem;font-weight:800;border-radius:8px;
+    padding:7px 11px;cursor:pointer;border:1px solid var(--line);color:var(--sub);background:rgba(0,0,0,.2)}
+  .sug .head .etgl.on{background:#5a3d10;border-color:#f4b740;color:#ffd479}
   .sug ul{list-style:none;display:flex;flex-direction:column;gap:9px}
   .sug li{display:flex;gap:10px;font-size:.86rem;align-items:flex-start}
-  .sug li .k{flex-shrink:0;width:64px;color:#9fb4e6;font-weight:700;font-size:.78rem;padding-top:1px}
+  .sug li .k{flex-shrink:0;width:70px;color:#9fb4e6;font-weight:700;font-size:.78rem;padding-top:1px}
   .sug li .v{flex:1}
   .sug li .v b{color:#fff}
   .branch{margin-top:12px;background:rgba(10,16,32,.5);border-radius:8px;padding:10px 12px;font-size:.78rem;color:var(--sub)}
   .branch b{color:#ffd479}
+  .empty{background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:22px 16px;text-align:center;color:var(--sub);font-size:.85rem}
 
   /* week band */
   .band-wrap{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
@@ -81,7 +98,6 @@
   .share{width:100%;margin-top:12px;background:var(--free);color:#04240f;border:none;border-radius:10px;height:42px;font-weight:800;font-size:.9rem;cursor:pointer}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#04240f;color:#c9f5da;border:1px solid var(--free);padding:10px 18px;border-radius:99px;font-size:.82rem;opacity:0;transition:.25s;pointer-events:none}
   .toast.show{opacity:1}
-  .hint{font-size:.72rem;color:var(--sub);margin-top:8px;text-align:center}
 </style>
 
 <div class="app">
@@ -108,24 +124,32 @@
         </div>
         <button class="add" id="add">＋ 追加する</button>
       </div>
-      <div class="mini-actions">
-        <button id="undo">1つ戻す</button>
-        <button id="clear">ぜんぶ消す</button>
-      </div>
     </div>
     <p class="hint">周期で回らなくてOK。確定した並びを「昼勤×4」みたいに置くだけ。</p>
   </section>
 
-  <!-- 2. calendar -->
+  <!-- 2. month calendar -->
   <section class="sec">
-    <h2>② 入ったシフト（タップで詳細・「早」で早出切替）</h2>
-    <div class="cal" id="cal"></div>
+    <h2>② シフトカレンダー（日をタップで整え方）</h2>
+    <div class="cal-head">
+      <button id="prevM">‹</button>
+      <div class="mo" id="moLabel"></div>
+      <button id="nextM">›</button>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="cal-legend">
+      <span><i class="sw day"></i>昼勤</span>
+      <span><i class="sw night"></i>夜勤</span>
+      <span><i class="sw off"></i>休み</span>
+      <span style="color:#ffd479">早=早出</span>
+    </div>
+    <div class="cal-actions"><button id="clear">ぜんぶ消す</button></div>
   </section>
 
   <!-- 3. suggestion -->
   <section class="sec" id="sugSec">
     <h2>③ その日の整え方</h2>
-    <div class="sug" id="sug"></div>
+    <div id="sug"></div>
   </section>
 
   <!-- 4. family share -->
@@ -148,54 +172,60 @@
 <script>
 const WD=['日','月','火','水','木','金','土'];
 const TYPES={
-  day:{k:'day',label:'昼勤',start:'8:30',end:'19:00',early:{start:'8:00',end:'18:30'}},
-  night:{k:'night',label:'夜勤',start:'22:00',end:'翌8:30',early:{start:'21:00',end:'翌8:00'}},
-  off:{k:'off',label:'休み'}
+  day:{k:'day',label:'昼勤',ic:'☀️',start:'8:30',end:'19:00',early:{start:'8:00',end:'18:30'}},
+  night:{k:'night',label:'夜勤',ic:'🌙',start:'22:00',end:'翌8:30',early:{start:'21:00',end:'翌8:00'}},
+  off:{k:'off',label:'休み',ic:'😴'}
 };
-let pickType='day', cnt=4, sel=0;
-let days=[];
+let pickType='day', cnt=4;
+let days=[];              // {type,early,date}
+let selDate=null;         // Date
+let viewY, viewM;
+
+function addDays(base,n){const d=new Date(base);d.setDate(d.getDate()+n);return d;}
+function keyOf(d){return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();}
+function sameDay(a,b){return a&&b&&keyOf(a)===keyOf(b);}
+function lastDate(){return days.length?days[days.length-1].date:addDays(new Date(new Date().setHours(0,0,0,0)),-1);}
 
 function seed(){
   const runs=[['day',4],['off',1],['night',4],['off',3],['day',2],['off',2],['night',2],['off',3]];
   const t=new Date(); t.setHours(0,0,0,0);
-  days=[];
-  runs.forEach(([k,n])=>{for(let i=0;i<n;i++)days.push({type:k,early:false});});
-  days=days.map((d,i)=>({...d,date:addDays(t,i)}));
+  days=[]; let i=0;
+  runs.forEach(([k,n])=>{for(let j=0;j<n;j++){days.push({type:k,early:false,date:addDays(t,i)});i++;}});
 }
-function addDays(base,n){const d=new Date(base);d.setDate(d.getDate()+n);return d;}
-function lastDate(){return days.length?days[days.length-1].date:(()=>{const t=new Date();t.setHours(0,0,0,0);return addDays(t,-1);})();}
 
-function render(){
-  const cal=document.getElementById('cal'); cal.innerHTML='';
-  days.forEach((d,i)=>{
-    const T=TYPES[d.type];
-    const el=document.createElement('div');
-    el.className='d'+(i===sel?' sel':'');
-    const wd=d.date.getDay();
-    const wdc=wd===6?'sat':wd===0?'sun':'';
-    let timeTxt = d.type==='off' ? '' : (d.early? `${T.early.start}–${T.early.end}` : `${T.start}–${T.end}`);
-    let earlyBtn = d.type==='off' ? '' :
-      `<button class="early${d.early?' on':''}" data-i="${i}">早</button>`;
-    el.innerHTML=`
-      <div class="date"><span class="${wdc}">${d.date.getMonth()+1}/${d.date.getDate()}(${WD[wd]})</span></div>
-      <div class="pill ${d.type}">${d.type==='day'?'☀️':d.type==='night'?'🌙':'😴'} ${T.label}${d.early?'・早出':''}<span class="t">${timeTxt}</span></div>
-      ${earlyBtn}`;
-    el.addEventListener('click',e=>{ if(e.target.classList.contains('early'))return; sel=i; render(); });
-    cal.appendChild(el);
-  });
-  cal.querySelectorAll('.early').forEach(b=>b.addEventListener('click',e=>{
-    const i=+e.target.dataset.i; days[i].early=!days[i].early; render();
-  }));
-  renderSug();
-  renderBands();
+function render(){ renderCal(); renderSug(); renderBands(); }
+
+function renderCal(){
+  document.getElementById('moLabel').textContent=`${viewY}年 ${viewM+1}月`;
+  const grid=document.getElementById('grid'); grid.innerHTML='';
+  WD.forEach((w,i)=>{const h=document.createElement('div');h.className='wd'+(i===6?' sat':i===0?' sun':'');h.textContent=w;grid.appendChild(h);});
+  const byDate={}; days.forEach((d,i)=>byDate[keyOf(d.date)]=i);
+  const first=new Date(viewY,viewM,1);
+  const start=addDays(first,-first.getDay());
+  for(let c=0;c<42;c++){
+    const date=addDays(start,c);
+    const inMo=date.getMonth()===viewM;
+    const entry=byDate[keyOf(date)];
+    const cell=document.createElement('div');
+    let cls='cell'+(inMo?'':' out');
+    if(entry!==undefined) cls+=' '+days[entry].type;
+    if(sameDay(date,selDate)) cls+=' sel';
+    cell.className=cls;
+    const T=entry!==undefined?TYPES[days[entry].type]:null;
+    cell.innerHTML=`<span class="num">${date.getDate()}</span>`+
+      (T?`<span class="ic">${T.ic}</span><span class="lbl">${T.label}</span>`:'<span class="ic"></span>')+
+      (T&&days[entry].early?'<span class="ebadge">早</span>':'');
+    if(inMo) cell.addEventListener('click',()=>{selDate=date;render();});
+    grid.appendChild(cell);
+  }
 }
 
 function renderSug(){
-  const sec=document.getElementById('sugSec'), box=document.getElementById('sug');
-  if(!days.length){sec.style.display='none';return;} sec.style.display='';
-  const d=days[sel], next=days[sel+1], prev=days[sel-1];
-  const early=d.early;
-  let icon,ttl,sm,items=[],branch='';
+  const box=document.getElementById('sug');
+  const idx=days.findIndex(d=>sameDay(d.date,selDate));
+  if(idx<0){box.innerHTML='<div class="empty">カレンダーの日をタップすると、その日の整え方が出ます。</div>';return;}
+  const d=days[idx], next=days[idx+1], prev=days[idx-1], early=d.early;
+  let icon,ttl,sm,items=[],branch='',tgl='';
   if(d.type==='day'){
     icon='☀️'; ttl='昼勤の日'; sm=early?'早出 8:00–18:30':'8:30–19:00';
     const bed=early?'23:00':'23:30', wake=early?'6:15':'6:45';
@@ -206,6 +236,7 @@ function renderSug(){
       ['仮眠','帰宅後の仮眠はNG（夜眠れなくなる）。眠ければ昼休憩に10分'],
       ['カフェイン',`昼休憩まで。遅くとも ${early?'14:00':'14:30'}`]
     ];
+    tgl='e';
   } else if(d.type==='night'){
     icon='🌙'; ttl='夜勤の日'; sm=early?'早出 21:00–翌8:00':'22:00–翌8:30';
     const nap=early?'13:00–17:00':'14:00–18:00', caf=early?'3:00':'4:00';
@@ -216,10 +247,10 @@ function renderSug(){
       ['仮眠(勤務中)','眠気ピークの 2:00–4:00 に 20–30分'],
       ['カフェイン',`前半に。明け方 ${caf} 以降は摂らない`]
     ];
-    const nx = !next? '' : next.type==='night'
+    branch = !next? '' : next.type==='night'
       ? '<b>翌朝の明け：</b>また夜勤なので、帰宅後 9:30〜14:00 にしっかり寝て夜勤リズムを維持。'
       : '<b>翌朝の明け：</b>次が'+(next.type==='off'?'休み':'昼勤')+'なので、昼の睡眠は2〜3時間で切り上げ→夜に早め就寝でリセット。';
-    branch=nx;
+    tgl='e';
   } else {
     icon='😴'; ttl='休みの日';
     const resetting = prev && prev.type==='night';
@@ -233,12 +264,15 @@ function renderSug(){
       ['過ごし方','次の勤務が昼か夜かで前日夜の就寝時刻を寄せておく']
     ];
   }
-  box.innerHTML=`
+  const tglBtn = tgl==='e' ? `<button class="etgl${early?' on':''}" id="etgl">${early?'早出 ✓':'早出にする'}</button>` : '';
+  box.innerHTML=`<div class="sug">
     <div class="head"><span class="big">${icon}</span>
       <div><div class="ttl">${d.date.getMonth()+1}/${d.date.getDate()}（${WD[d.date.getDay()]}） ${ttl}</div>
-      <div class="sm">${sm||''}</div></div></div>
+      <div class="sm">${sm||''}</div></div>${tglBtn}</div>
     <ul>${items.map(([k,v])=>`<li><span class="k">${k}</span><span class="v">${v}</span></li>`).join('')}</ul>
-    ${branch?`<div class="branch">${branch}</div>`:''}`;
+    ${branch?`<div class="branch">${branch}</div>`:''}</div>`;
+  const et=document.getElementById('etgl');
+  if(et) et.addEventListener('click',()=>{days[idx].early=!days[idx].early;render();});
 }
 
 function bandSegs(d){
@@ -256,6 +290,7 @@ function renderBands(){
   });
 }
 
+// controls
 document.querySelectorAll('.type-btn').forEach(b=>b.addEventListener('click',()=>{
   pickType=b.dataset.k;
   document.querySelectorAll('.type-btn').forEach(x=>x.classList.toggle('on',x===b));
@@ -263,19 +298,25 @@ document.querySelectorAll('.type-btn').forEach(b=>b.addEventListener('click',()=
 document.getElementById('plus').onclick=()=>{cnt=Math.min(14,cnt+1);document.getElementById('cnt').textContent=cnt;};
 document.getElementById('minus').onclick=()=>{cnt=Math.max(1,cnt-1);document.getElementById('cnt').textContent=cnt;};
 document.getElementById('add').onclick=()=>{
-  let base=lastDate();
+  const base=lastDate();
+  const firstNew=addDays(base,1);
   for(let i=1;i<=cnt;i++) days.push({type:pickType,early:false,date:addDays(base,i)});
-  sel=days.length-cnt; render();
+  selDate=firstNew; viewY=firstNew.getFullYear(); viewM=firstNew.getMonth();
+  render();
   toast(`${TYPES[pickType].label} を ${cnt}日 追加`);
 };
-document.getElementById('undo').onclick=()=>{ if(days.length){days.pop(); sel=Math.min(sel,days.length-1);} render(); };
-document.getElementById('clear').onclick=()=>{ days=[]; sel=0; render(); };
+document.getElementById('clear').onclick=()=>{days=[];selDate=null;render();};
+document.getElementById('prevM').onclick=()=>{viewM--;if(viewM<0){viewM=11;viewY--;}renderCal();};
+document.getElementById('nextM').onclick=()=>{viewM++;if(viewM>11){viewM=0;viewY++;}renderCal();};
 document.getElementById('share').onclick=()=>toast('（試作）今週のリズムを画像にして共有します');
 
 let tmr;
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tmr);tmr=setTimeout(()=>t.classList.remove('show'),1800);}
 
+// init
 seed();
-sel=days.findIndex(d=>d.type==='night'); if(sel<0)sel=0;
+const firstNight=days.find(d=>d.type==='night');
+selDate=firstNight?firstNight.date:days[0].date;
+const t=new Date(); viewY=t.getFullYear(); viewM=t.getMonth();
 render();
 </script>
