@@ -87,6 +87,15 @@
       transition: transform 0.15s ease, background 0.15s ease;
     }
     .cta-btn:hover { background: var(--accent-deep); transform: translateY(-2px); }
+    .cta-ghost {
+      display: inline-block; margin-left: 10px;
+      color: #bcd0ff; font-size: 0.95rem; font-weight: 700;
+      padding: 15px 26px; border-radius: 999px;
+      border: 1.5px solid rgba(79,140,255,0.5); text-decoration: none;
+      transition: background 0.15s ease;
+    }
+    .cta-ghost:hover { background: rgba(79,140,255,0.12); }
+    @media (max-width: 460px) { .cta-ghost { margin-left: 0; margin-top: 10px; } }
     .cta-note { margin-top: 10px; font-size: 0.78rem; color: var(--ink-soft); }
     .cta-note strong { color: #ffd479; }
 
@@ -205,6 +214,7 @@
           </ul>
           <div class="cta-wrap">
             <a class="cta-btn js-cta" href="#register" data-loc="hero">事前登録する(無料)</a>
+            <a class="cta-ghost js-cta" href="../app/" data-loc="demo">▶ 動くデモを試す</a>
             <p class="cta-note">事前登録の方は正式リリース時 <strong>¥1,480 → ¥980</strong> の早期割引</p>
           </div>
         </div>
