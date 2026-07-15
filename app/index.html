@@ -67,6 +67,7 @@
   .cell.off{background:rgba(74,85,112,.16)}
   .cell.off .lbl{color:#8f9cbb}
   .cell.sel{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+  .cell.today .num{background:var(--accent);color:#fff;border-radius:99px;padding:1px 5px;margin:-1px 0 0 -2px}
   .cell .ebadge{position:absolute;top:2px;right:3px;font-size:.52rem;font-weight:800;color:#ffd479;background:#5a3d10;border-radius:4px;padding:0 3px}
   .cal-legend{display:flex;gap:12px;justify-content:center;margin-top:12px;font-size:.68rem;color:var(--sub)}
   .cal-legend span{display:inline-flex;align-items:center;gap:5px}
@@ -191,11 +192,25 @@ let viewY, viewM;
 function addDays(base,n){const d=new Date(base);d.setDate(d.getDate()+n);return d;}
 function keyOf(d){return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();}
 function sameDay(a,b){return a&&b&&keyOf(a)===keyOf(b);}
-function lastDate(){return days.length?days[days.length-1].date:addDays(new Date(new Date().setHours(0,0,0,0)),-1);}
+function today0(){const t=new Date();t.setHours(0,0,0,0);return t;}
+function lastDate(){return days.length?days[days.length-1].date:addDays(today0(),-1);}
+
+const STORE='shiftrhythm-proto-v1';
+function save(){
+  try{localStorage.setItem(STORE,JSON.stringify(days.map(d=>({t:d.type,e:d.early,d:d.date.getTime()}))));}catch(e){}
+}
+function load(){
+  try{
+    const raw=localStorage.getItem(STORE); if(!raw)return false;
+    const arr=JSON.parse(raw); if(!Array.isArray(arr)||!arr.length)return false;
+    days=arr.map(x=>({type:x.t,early:!!x.e,date:new Date(x.d)}));
+    return true;
+  }catch(e){return false;}
+}
 
 function seed(){
   const runs=[['day',4],['off',1],['night',4],['off',3],['day',2],['off',2],['night',2],['off',3]];
-  const t=new Date(); t.setHours(0,0,0,0);
+  const t=today0();
   days=[]; let i=0;
   runs.forEach(([k,n])=>{for(let j=0;j<n;j++){days.push({type:k,early:false,date:addDays(t,i)});i++;}});
 }
@@ -217,6 +232,7 @@ function renderCal(){
     let cls='cell'+(inMo?'':' out');
     if(entry!==undefined) cls+=' '+days[entry].type;
     if(sameDay(date,selDate)) cls+=' sel';
+    if(sameDay(date,today0())) cls+=' today';
     cell.className=cls;
     const T=entry!==undefined?TYPES[days[entry].type]:null;
     cell.innerHTML=`<span class="num">${date.getDate()}</span>`+
@@ -279,7 +295,7 @@ function renderSug(){
     <ul>${items.map(([k,v])=>`<li><span class="k">${k}</span><span class="v">${v}</span></li>`).join('')}</ul>
     ${branch?`<div class="branch">${branch}</div>`:''}</div>`;
   const et=document.getElementById('etgl');
-  if(et) et.addEventListener('click',()=>{days[idx].early=!days[idx].early;render();});
+  if(et) et.addEventListener('click',()=>{days[idx].early=!days[idx].early;save();render();});
 }
 
 function bandSegs(d){
@@ -289,10 +305,17 @@ function bandSegs(d){
 }
 function renderBands(){
   const box=document.getElementById('bands'); box.innerHTML='';
-  days.slice(0,7).forEach(d=>{
+  // 今日以降の7日間を表示(過去分はスキップ)
+  const t=today0();
+  let start=days.findIndex(d=>d.date>=t);
+  if(start<0) start=Math.max(0,days.length-7);
+  const slice=days.slice(start,start+7);
+  if(!slice.length){box.innerHTML='<div style="font-size:.8rem;color:var(--sub);text-align:center;padding:8px">シフトを入れると今週のリズムが出ます</div>';return;}
+  slice.forEach(d=>{
     const row=document.createElement('div'); row.className='brow';
     const segs=bandSegs(d).map(([c,w])=>`<span class="seg ${c}" style="width:${w}%"></span>`).join('');
-    row.innerHTML=`<span class="bd">${WD[d.date.getDay()]}</span><div class="band">${segs}</div>`;
+    const isToday=sameDay(d.date,t);
+    row.innerHTML=`<span class="bd" style="${isToday?'color:#ffd479;font-weight:800':''}">${d.date.getDate()}${WD[d.date.getDay()]}</span><div class="band">${segs}</div>`;
     box.appendChild(row);
   });
 }
@@ -309,10 +332,14 @@ document.getElementById('add').onclick=()=>{
   const firstNew=addDays(base,1);
   for(let i=1;i<=cnt;i++) days.push({type:pickType,early:false,date:addDays(base,i)});
   selDate=firstNew; viewY=firstNew.getFullYear(); viewM=firstNew.getMonth();
-  render();
+  save(); render();
   toast(`${TYPES[pickType].label} を ${cnt}日 追加`);
 };
-document.getElementById('clear').onclick=()=>{days=[];selDate=null;render();};
+document.getElementById('clear').onclick=()=>{
+  if(!days.length)return;
+  if(!confirm('入れたシフトをすべて消します。よろしいですか?'))return;
+  days=[];selDate=null;save();render();
+};
 document.getElementById('prevM').onclick=()=>{viewM--;if(viewM<0){viewM=11;viewY--;}renderCal();};
 document.getElementById('nextM').onclick=()=>{viewM++;if(viewM>11){viewM=0;viewY++;}renderCal();};
 document.getElementById('share').onclick=()=>toast('（試作）今週のリズムを画像にして共有します');
@@ -320,11 +347,13 @@ document.getElementById('share').onclick=()=>toast('（試作）今週のリズ�
 let tmr;
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tmr);tmr=setTimeout(()=>t.classList.remove('show'),1800);}
 
-// init
-seed();
-const firstNight=days.find(d=>d.type==='night');
-selDate=firstNight?firstNight.date:days[0].date;
-const t=new Date(); viewY=t.getFullYear(); viewM=t.getMonth();
+// init: 保存データがあれば復元、なければサンプルを投入
+if(!load()){ seed(); save(); }
+const tNow=today0();
+const todayEntry=days.find(d=>sameDay(d.date,tNow));
+const firstNight=days.find(d=>d.type==='night'&&d.date>=tNow);
+selDate=todayEntry?todayEntry.date:(firstNight?firstNight.date:(days[0]&&days[0].date));
+viewY=tNow.getFullYear(); viewM=tNow.getMonth();
 render();
 </script>
 </body>
