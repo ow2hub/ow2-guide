@@ -5,7 +5,7 @@
 
 遷移先URL(公開後のLPに差し替え):
 ```
-https://ow2hub.github.io/ow2-guide/lp/?utm_source=google&utm_medium=cpc&utm_campaign=pretest01
+https://ow2hub.github.io/shiftrhythm/lp/?utm_source=google&utm_medium=cpc&utm_campaign=pretest01
 ```
 X用は `utm_source=twitter` に変える。
 

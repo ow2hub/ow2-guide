@@ -23,9 +23,9 @@
 
 ## C. LPを公開する(GitHub Pages・無料)
 
-- このリポジトリ(ow2hub/ow2-guide)の Settings → Pages
+- このリポジトリ(ow2hub/shiftrhythm)の Settings → Pages
 - Source: Deploy from a branch → Branch: `claude/solo-app-dev-cycle-36qhdj` / フォルダ: `/ (root)`
-- 数分後、`https://ow2hub.github.io/ow2-guide/lp/` で公開される
+- 数分後、`https://ow2hub.github.io/shiftrhythm/lp/` で公開される
 - ※ A・Bの差し替えをコミット&プッシュしてから公開すること(または公開後に反映)
 
 ## D. 広告を入稿する(予算 合計¥10,000)
