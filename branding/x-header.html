@@ -1,0 +1,43 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1500px;height:500px;overflow:hidden;
+  font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif}
+.h{width:1500px;height:500px;position:relative;
+  background:radial-gradient(1200px 500px at 78% -80px,rgba(79,140,255,0.28),transparent 62%),
+  linear-gradient(180deg,#141b2e 0%,#0d1220 100%);
+  display:flex;align-items:center;padding:0 90px;color:#e8edf7}
+.left{flex:1}
+.badge{display:inline-block;font-size:20px;font-weight:700;letter-spacing:3px;color:#bcd0ff;
+  border:1.5px solid rgba(79,140,255,.5);border-radius:999px;padding:6px 22px;margin-bottom:26px}
+.ttl{font-size:76px;font-weight:800;letter-spacing:2px;line-height:1.1}
+.ttl .em{color:#7fa9ff}
+.sub{font-size:29px;color:#93a1c0;margin-top:20px;line-height:1.5}
+.tags{margin-top:26px;display:flex;gap:14px}
+.tag{font-size:20px;font-weight:700;color:#cfe0ff;background:rgba(79,140,255,.14);
+  border:1px solid rgba(79,140,255,.4);border-radius:8px;padding:7px 16px}
+.right{width:430px;display:flex;flex-direction:column;gap:11px}
+.brow{display:flex;align-items:center;gap:12px}
+.bd{width:34px;font-size:19px;color:#93a1c0}
+.band{flex:1;height:26px;border-radius:6px;display:flex;overflow:hidden;background:#0b1120}
+.s{height:100%}
+.sleep{background:#35507a}.day{background:#f4b740}.night{background:#6c7bd6}.free{background:#3fae7a}
+.moon{position:absolute;top:54px;right:78px;font-size:64px;opacity:.9}
+</style></head><body>
+<div class="h">
+  <div class="left">
+    <span class="badge">SHIFT RHYTHM</span>
+    <div class="ttl">シフト<span class="em">リズム</span></div>
+    <div class="sub">交代勤務の、<span style="color:#e8edf7">体内時計を整える。</span><br>夜勤明けの睡眠・光・食事を、シフトから提案。</div>
+    <div class="tags"><span class="tag">2交代・3交代 対応</span><span class="tag">家族に"回復時間"を共有</span><span class="tag">買い切り</span></div>
+  </div>
+  <div class="right">
+    <div class="brow"><span class="bd">月</span><div class="band"><span class="s sleep" style="width:28%"></span><span class="s free" style="width:7%"></span><span class="s day" style="width:44%"></span><span class="s free" style="width:21%"></span></div></div>
+    <div class="brow"><span class="bd">火</span><div class="band"><span class="s sleep" style="width:28%"></span><span class="s free" style="width:7%"></span><span class="s day" style="width:44%"></span><span class="s free" style="width:21%"></span></div></div>
+    <div class="brow"><span class="bd">水</span><div class="band"><span class="s free" style="width:20%"></span><span class="s day" style="width:44%"></span><span class="s sleep" style="width:36%"></span></div></div>
+    <div class="brow"><span class="bd">木</span><div class="band"><span class="s night" style="width:35%"></span><span class="s free" style="width:6%"></span><span class="s sleep" style="width:27%"></span><span class="s free" style="width:32%"></span></div></div>
+    <div class="brow"><span class="bd">金</span><div class="band"><span class="s night" style="width:35%"></span><span class="s sleep" style="width:46%"></span><span class="s free" style="width:19%"></span></div></div>
+    <div class="brow"><span class="bd">土</span><div class="band"><span class="s sleep" style="width:33%"></span><span class="s free" style="width:67%"></span></div></div>
+  </div>
+  <div class="moon">🌙</div>
+</div>
+</body></html>
