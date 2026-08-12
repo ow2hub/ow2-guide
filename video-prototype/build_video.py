@@ -197,7 +197,7 @@ SCENES = [
     {
         "chip": "POINT 1/3",
         "visual": {"type": "bullets", "kicker": "POINT 1 — 言い方が違うだけ",
-                   "title": "同じことを30通りで\n言っている",
+                   "title": "同じことを30通りで言っている",
                    "items": ["『エッセンシャル思考』→ 90点ルール",
                              "『7つの習慣』→ 第2領域に時間を使う",
                              "どちらも中身は「取捨選択」"]},
@@ -255,7 +255,7 @@ SCENES = [
     {
         "chip": "POINT 3/3",
         "visual": {"type": "bullets", "kicker": "19個の中で一番刺さったもの",
-                   "title": "予定表には\n「やらないこと」を書く",
+                   "title": "予定表に「やらないこと」を書く",
                    "items": ["カレンダーに「何もしない時間」を先に入れる",
                              "登場は30冊中わずか1冊",
                              "共通点にはならない。でも刺さる人には刺さる"]},
@@ -274,7 +274,7 @@ SCENES = [
     {
         "chip": "正直な話",
         "visual": {"type": "bullets", "kicker": "この分析の限界",
-                   "title": "数字は「目安」として\n見てほしい",
+                   "title": "数字は「目安」として見てほしい",
                    "items": ["選書はランキング順 → 名著が漏れている可能性",
                              "AIのタグ付けはブレる → 3回実行し2回以上一致のみ採用",
                              "本文全文は未使用のため取りこぼしがある"]},
@@ -309,7 +309,7 @@ SCENES = [
     {
         "chip": "次回予告",
         "visual": {"type": "bullets", "kicker": "次回予告",
-                   "title": "41個の主張を\nAIに全部やらせてみる",
+                   "title": "41個の主張をAIに全部やらせる",
                    "items": ["本の教えを、AIで実行可能にする",
                              "毎週金曜 19時 更新",
                              "チャンネル登録で次回の検証をお見逃しなく"]},
@@ -520,16 +520,25 @@ def scene_background(scene):
            fill=(170, 160, 145), anchor="ma")
     # 種類別の静止部分
     if vis["type"] == "bullets":
-        y = 132
-        for tl in vis["title"].split("\n"):
-            d.text((92, y), tl, font=font(FONT_BOLD, 46), fill=INK)
-            y += 56
-        y += 8
+        # カード内(132..352)に必ず収まるよう、はみ出す場合だけ自動で縮める
+        top, bottom = 132, 352
+        tlines = vis["title"].split("\n")
+        ts, tlh, ilh = 46, 56, 48
+        need = len(tlines) * tlh + 12 + len(vis["items"]) * ilh
+        if need > bottom - top:
+            k = (bottom - top) / need
+            ts, tlh, ilh = int(ts * k), int(tlh * k), int(ilh * k)
+        y = top
+        for tl in tlines:
+            d.text((92, y), tl, font=font(FONT_BOLD, ts), fill=INK)
+            y += tlh
+        y += 12
+        isize = min(32, ilh - 14)
         for i, it in enumerate(vis["items"]):
             col = [PINK, SKY, PURPLE][i % 3]
-            d.rounded_rectangle([92, y, 124, y + 32], radius=10, fill=col)
-            d.text((142, y - 2), it, font=font(FONT_REG, 32), fill=INK)
-            y += 48
+            d.rounded_rectangle([92, y + 4, 124, y + 4 + isize], radius=10, fill=col)
+            d.text((142, y), it, font=font(FONT_REG, isize), fill=INK)
+            y += ilh
     elif vis["type"] == "stat":
         d.text((640, 140), vis["label"], font=font(FONT_BOLD, 32), fill=(120, 118, 130), anchor="ma")
     elif vis["type"] == "bars":
