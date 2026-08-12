@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+"""30冊横断分析の集計スクリプト.
+
+AIは主張の「抽出」だけを担当し、何冊に登場したかの「カウント」はここで
+決定論的に行う。AIに数えさせると誤るため、集計は必ずこのスクリプトを通すこと。
+
+入力:
+    books.csv                     書誌リスト(id,title,author,year,origin)
+    extracted/<id>_run<N>.json    抽出結果 {"book_id": "b01", "claims": [...]}
+    canonical.json                名寄せ表 {"元の表現": "代表名"}(任意)
+
+出力:
+    report.md            全ランキング・和洋比較・1冊限定の主張一覧
+    video_numbers.py     build_video.py の SCENES に貼れる数値ブロック
+
+使い方:
+    python3 aggregate.py                # 集計してレポート出力
+    python3 aggregate.py --list-claims  # 名寄せプロンプトに渡す主張一覧を出力
+"""
+
+import argparse
+import csv
+import json
+import re
+import sys
+from collections import Counter, defaultdict
+from pathlib import Path
+
+BASE = Path(__file__).resolve().parent
+BOOKS_CSV = BASE / "books.csv"
+EXTRACTED = BASE / "extracted"
+CANONICAL = BASE / "canonical.json"
+MIN_AGREEMENT = 2      # 3回の実行のうち何回以上一致したら採用するか
+
+
+def load_books():
+    if not BOOKS_CSV.exists():
+        sys.exit(f"{BOOKS_CSV} がありません。books.sample.csv をコピーして作ってください。")
+    with BOOKS_CSV.open(encoding="utf-8") as f:
+        books = [r for r in csv.DictReader(f) if r.get("id")]
+    if not books:
+        sys.exit("books.csv に行がありません。")
+    return books
+
+
+def normalize(text):
+    """表記ゆれの軽い吸収(全角空白・記号・句点の除去)."""
+    t = text.strip().replace("　", "")
+    t = re.sub(r"[。、,.\s]+$", "", t)
+    return t
+
+
+def load_extractions(books):
+    """本ごとに、MIN_AGREEMENT 回以上出現した主張だけを採用して返す."""
+    if not EXTRACTED.exists():
+        sys.exit(f"{EXTRACTED}/ がありません。抽出結果のJSONを置いてください。")
+    adopted, stats = {}, {}
+    for book in books:
+        bid = book["id"]
+        runs = sorted(EXTRACTED.glob(f"{bid}_run*.json"))
+        if not runs:
+            print(f"  [警告] {bid} の抽出結果が見つかりません。スキップします。")
+            continue
+        counter = Counter()
+        for path in runs:
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as e:
+                sys.exit(f"{path} が壊れています: {e}")
+            claims = {normalize(c) for c in data.get("claims", []) if normalize(c)}
+            counter.update(claims)
+        need = MIN_AGREEMENT if len(runs) >= MIN_AGREEMENT else 1
+        kept = sorted(c for c, n in counter.items() if n >= need)
+        adopted[bid] = kept
+        stats[bid] = {"runs": len(runs), "raw": len(counter), "kept": len(kept)}
+    if not adopted:
+        sys.exit("採用できた抽出結果が1件もありません。")
+    return adopted, stats
+
+
+def apply_canonical(adopted):
+    if not CANONICAL.exists():
+        print("  [注意] canonical.json がないため、名寄せなしで集計します。")
+        return adopted
+    table = json.loads(CANONICAL.read_text(encoding="utf-8"))
+    table = {normalize(k): normalize(v) for k, v in table.items()}
+    return {bid: sorted({table.get(c, c) for c in claims})
+            for bid, claims in adopted.items()}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--list-claims", action="store_true",
+                    help="名寄せプロンプトに貼る主張一覧を出力して終了")
+    args = ap.parse_args()
+
+    books = load_books()
+    by_id = {b["id"]: b for b in books}
+    adopted, stats = load_extractions(books)
+
+    if args.list_claims:
+        every = sorted({c for claims in adopted.values() for c in claims})
+        print("\n".join(f"- {c}" for c in every))
+        print(f"\n({len(every)}件)", file=sys.stderr)
+        return
+
+    raw_total = sum(len(v) for v in adopted.values())
+    merged = apply_canonical(adopted)
+
+    # 主張 -> 登場した本のid
+    appears = defaultdict(set)
+    for bid, claims in merged.items():
+        for c in claims:
+            appears[c].add(bid)
+
+    n_books = len(merged)
+    ranking = sorted(appears.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    only_one = [c for c, ids in ranking if len(ids) == 1]
+
+    # 和書/洋書の傾向
+    origin_books = defaultdict(set)
+    for bid in merged:
+        origin_books[by_id[bid].get("origin", "不明")].add(bid)
+
+    # ---- report.md -------------------------------------------------------
+    out = ["# 30冊横断分析レポート", "",
+           "※このレポートは aggregate.py が自動生成しています。",
+           f"※採用基準: 同一書籍で{MIN_AGREEMENT}回以上の実行で一致した主張のみ", "",
+           "## 全体の数字", "",
+           f"- 分析した本: **{n_books}冊**",
+           f"- 抽出された主張(名寄せ前・延べ): **{raw_total}個**",
+           f"- ユニークな主張(名寄せ後): **{len(appears)}個**",
+           f"- 1冊にしか登場しなかった主張: **{len(only_one)}個**", ""]
+
+    for label, threshold in (("20冊以上", 20), ("15冊以上", 15)):
+        hits = [(c, ids) for c, ids in ranking if len(ids) >= threshold]
+        out += [f"- {label}に登場した主張: **{len(hits)}個**"]
+    out += ["", "## 主張ランキング", "", "| 順位 | 主張 | 登場冊数 |", "|---:|---|---:|"]
+    for i, (c, ids) in enumerate(ranking, 1):
+        out.append(f"| {i} | {c} | {len(ids)}/{n_books} |")
+
+    out += ["", "## 1冊にしか出てこなかった主張(動画の「差分」パート用)", ""]
+    for c in only_one:
+        bid = next(iter(appears[c]))
+        out.append(f"- 「{c}」 — {by_id[bid]['title']}")
+
+    out += ["", "## 和書 / 洋書 の傾向", ""]
+    for origin, ids in sorted(origin_books.items()):
+        out.append(f"### {origin}({len(ids)}冊)")
+        local = Counter()
+        for c, cids in appears.items():
+            hit = len(cids & ids)
+            if hit:
+                local[c] = hit
+        for c, n in local.most_common(8):
+            out.append(f"- {c}: {n}/{len(ids)}冊")
+        out.append("")
+
+    out += ["## 実行ごとのブレ(信頼性の記録)", "",
+            "| 書籍 | 実行回数 | 延べ主張 | 採用 |", "|---|---:|---:|---:|"]
+    for bid, s in stats.items():
+        out.append(f"| {by_id[bid]['title']} | {s['runs']} | {s['raw']} | {s['kept']} |")
+
+    (BASE / "report.md").write_text("\n".join(out) + "\n", encoding="utf-8")
+
+    # ---- video_numbers.py ------------------------------------------------
+    top = ranking[:3]
+    next4 = ranking[3:7]
+    lines = ["# build_video.py の SCENES に貼るための数値(自動生成)", "",
+             f"N_BOOKS = {n_books}",
+             f"TOTAL_RAW_CLAIMS = {raw_total}",
+             f"UNIQUE_CLAIMS = {len(appears)}",
+             f"ONLY_ONE_BOOK = {len(only_one)}", "",
+             "# POINT 1 の横棒グラフ", "TOP3_BARS = ["]
+    for c, ids in top:
+        lines.append(f'    ("{c}", {len(ids)}, {n_books}),')
+    lines += ["]", "", "# 4位〜7位の横棒グラフ", "NEXT4_BARS = ["]
+    for c, ids in next4:
+        lines.append(f'    ("{c}", {len(ids)}, {n_books}),')
+    lines += ["]", "",
+              "# 「意外な少数派」パート: 調べたいキーワードをここに書いて数字を確認する",
+              "WATCHLIST = {"]
+    for kw in ("早起き", "朝活", "ポモドーロ", "マルチタスク"):
+        hit = [(c, len(ids)) for c, ids in ranking if kw in c]
+        lines.append(f'    "{kw}": {hit},')
+    lines += ["}", "",
+              "# 1冊にしかない主張(動画の POINT 3 で紹介する候補)", "ONLY_ONE_LIST = ["]
+    for c in only_one[:20]:
+        lines.append(f'    "{c}",')
+    lines.append("]")
+    (BASE / "video_numbers.py").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    print(f"分析した本: {n_books}冊")
+    print(f"延べ主張: {raw_total} → ユニーク: {len(appears)} → 1冊限定: {len(only_one)}")
+    print("トップ3:")
+    for c, ids in top:
+        print(f"  {c}: {len(ids)}/{n_books}")
+    print("\n出力: report.md / video_numbers.py")
+
+
+if __name__ == "__main__":
+    main()
