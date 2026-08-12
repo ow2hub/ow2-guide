@@ -1,345 +1,412 @@
 #!/usr/bin/env python3
-"""仮動画ビルダー — 「本×AI×実践検証」チャンネル 第1回プロトタイプ.
+"""仮動画ビルダー v2 — 漫画風ポップアニメ + キャラ掛け合い + VOICEVOX対応.
 
-台本データ(SCENES)からスライド画像(Pillow)・ナレーション(Open JTalk)を生成し、
-ffmpeg で字幕焼き込みの MP4 に組み立てる。サムネイル案も出力する。
+「AI実践読書ラボ」第1回:
+  『時間術の本30冊をAIに分析させたら、共通点は3つしかなかった』
 
-必要パッケージ: ffmpeg, open-jtalk, open-jtalk-mecab-naist-jdic,
-                hts-voice-nitech-jp-atr503-m001, fonts-noto-cjk, pillow
+特徴:
+  - 2キャラの掛け合い台本(吹き出し=字幕を兼ねる漫画レイアウト)
+  - 口パク(音声の音量に同期) / まばたき / 体の上下ゆれ / 吹き出しポップイン
+  - 横棒グラフ・大数字のカウントアップ・集中線などのポップ演出
+  - 音声は VOICEVOX(推奨) → 無ければ Open JTalk にフォールバック
+  - フレームは ffmpeg に直接パイプするので中間PNGを吐かない
 
-使い方: python3 build_video.py <出力ディレクトリ>
+音声エンジン:
+  VOICEVOX を使う場合は先にエンジンを起動しておく(Macならアプリを起動するだけ)。
+      既定の接続先: http://127.0.0.1:50021
+  起動していれば自動検出して VOICEVOX を使う。検出できなければ Open JTalk。
+
+  ※VOICEVOXは無料・商用利用可だが、キャラクターごとに利用規約があり
+    クレジット表記(例: VOICEVOX:ずんだもん)が必要。概要欄に必ず記載すること。
+  ※本スクリプトが描画するキャラ絵はオリジナルの簡易イラストであり、
+    VOICEVOXキャラクターの立ち絵ではない(立ち絵は別途ライセンスが必要)。
+
+使い方:
+    python3 build_video.py <出力ディレクトリ> [--engine voicevox|openjtalk|auto]
 """
 
+import argparse
+import json
+import math
 import subprocess
-import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 import wave
 from pathlib import Path
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+# ---------------------------------------------------------------------------
+# 基本設定
+# ---------------------------------------------------------------------------
 W, H = 1280, 720
-BG = (14, 23, 38)          # ダークネイビー
-BG_PANEL = (22, 35, 58)
-ACCENT = (245, 185, 66)    # アンバー
-TEXT = (240, 243, 248)
-SUBTEXT = (168, 180, 198)
+FPS = 15
+CHANNEL = "AI実践読書ラボ"
+WATERMARK = "仮動画サンプル / 数値はダミー"
 FONT_BOLD = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 FONT_REG = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
-DIC = "/var/lib/mecab/dic/open-jtalk/naist-jdic"
-VOICE = "/usr/share/hts-voice/nitech-jp-atr503-m001/nitech_jp_atr503_m001.htsvoice"
-CHANNEL = "AI実践読書ラボ"
-WATERMARK = "仮動画サンプル(音声・数値はダミー)"
-LINE_PAUSE = 0.35   # 行間ポーズ(秒)
-SCENE_PAUSE = 0.7   # シーン間ポーズ(秒)
+VOICEVOX_URL = "http://127.0.0.1:50021"
+OJT_DIC = "/var/lib/mecab/dic/open-jtalk/naist-jdic"
+OJT_VOICE = "/usr/share/hts-voice/nitech-jp-atr503-m001/nitech_jp_atr503_m001.htsvoice"
+
+# ポップな配色
+CREAM = (255, 249, 235)
+INK = (38, 42, 66)
+PINK = (255, 108, 145)
+YELLOW = (255, 201, 71)
+MINT = (86, 208, 184)
+SKY = (108, 178, 255)
+PURPLE = (154, 124, 235)
+WHITE = (255, 255, 255)
+
+# 話者定義: VOICEVOXのspeaker IDと、Open JTalkフォールバック時の声色パラメータ
+# VOICEVOX speaker id 例: 2=四国めたん(ノーマル) 3=ずんだもん(ノーマル)
+#                        8=春日部つむぎ 11=玄野武宏 13=青山龍星 14=冥鳴ひまり
+SPEAKERS = {
+    "labo": {   # 生徒・ツッコミ役
+        "name": "ラボくん",
+        "voicevox": 3,          # ずんだもん
+        "ojt": {"fm": 5.0, "rate": 1.05},
+        "body": MINT, "hair": (54, 168, 146), "side": "left",
+    },
+    "mei": {    # 解説・先生役
+        "name": "メイ先生",
+        "voicevox": 2,          # 四国めたん
+        "ojt": {"fm": -1.0, "rate": 1.0},
+        "body": PINK, "hair": (206, 78, 118), "side": "right",
+    },
+}
+
+LINE_PAUSE = 0.28
+SCENE_PAUSE = 0.6
 
 # ---------------------------------------------------------------------------
-# 台本データ
-# 各シーン: slide(kicker/title/bullets/chip) + lines(text=字幕, tts=読み上げ用)
+# 台本
+#   visual: bullets / stat / bars   impact=True で集中線
+#   lines : sp(話者) text(吹き出し表示) tts(読み上げ用/省略時はtext)
 # ---------------------------------------------------------------------------
 SCENES = [
-    # ---- 0:00 フック -------------------------------------------------------
+    # ---- OP フック ---------------------------------------------------------
     {
-        "slide": {
-            "kicker": "本 × AI × 実践検証 #01",
-            "title": "『エッセンシャル思考』を\nAIに1週間任せてみた",
-            "bullets": ["会議が4本消えた", "退社が平均50分早くなった", "ただし大失敗が1つ…"],
-            "chip": "OP",
-        },
+        "chip": "OP",
+        "visual": {"type": "stat", "kicker": "今回の検証", "num": "30", "unit": "冊",
+                   "label": "時間術・生産性の本をAIで横断分析"},
         "lines": [
-            {"text": "ベストセラー『エッセンシャル思考』。その教えを、AIに丸ごと任せて1週間働いてみました。",
-             "tts": "ベストセラー、エッセンシャル思考。その教えを、エーアイに丸ごと任せて、一週間働いてみました。"},
-            {"text": "結果、会議は4本消えて、退社時間は平均でおよそ50分早くなりました。",
-             "tts": "結果、会議は四本消えて、退社時間は平均で、およそ五十分早くなりました。"},
-            {"text": "ただし、1つだけ大きな失敗もしました。それは動画の後半でお話しします。",
-             "tts": "ただし、ひとつだけ大きな失敗もしました。それは動画の後半でお話しします。"},
-        ],
-    },
-    # ---- 0:30 予告+自己紹介 ------------------------------------------------
-    {
-        "slide": {
-            "kicker": "この動画でわかること",
-            "title": "本の教えをAIで実行する\n3つの方法",
-            "bullets": ["① 90点ルールでタスクを自動仕分け",
-                        "② 予定に自動でバッファを入れる",
-                        "③ AIに「上手な断り方」を書かせる"],
-            "chip": "予告",
-        },
-        "lines": [
-            {"text": "この動画では、本の教えをAIで実行する方法を、3つに絞って紹介します。",
-             "tts": "この動画では、本の教えをエーアイで実行する方法を、三つに絞って紹介します。"},
-            {"text": "1つ目、90点ルールでタスクを自動で仕分ける。",
-             "tts": "ひとつめ、九十点ルールで、タスクを自動で仕分ける。"},
-            {"text": "2つ目、予定に自動でバッファ、つまり余白を入れる。",
-             "tts": "ふたつめ、予定に自動でバッファ、つまり余白を入れる。"},
-            {"text": "3つ目、AIに「上手な断り方」を書かせる。",
-             "tts": "みっつめ、エーアイに、上手な断り方を書かせる。"},
-            {"text": "申し遅れました。ふだんはIT企業で働きながら、本とAIの組み合わせを検証している、当ラボのナビゲーターです。",
-             "tts": "申し遅れました。ふだんはアイティー企業で働きながら、本とエーアイの組み合わせを検証している、当ラボのナビゲーターです。"},
-            {"text": "机上の空論ではなく、実際に1週間やってみた記録でお届けします。それでは行きましょう。",
-             "tts": "机上の空論ではなく、実際に一週間やってみた記録でお届けします。それでは行きましょう。"},
-        ],
-    },
-    # ---- 1:00 ポイント① 90点ルール -----------------------------------------
-    {
-        "slide": {
-            "kicker": "POINT 1 — 90点ルール",
-            "title": "「より少なく、\nしかしより良く」",
-            "bullets": ["選択肢は90点以上かで判断する",
-                        "90点未満は0点と同じ = やらない",
-                        "…でも人間にはこれが難しい"],
-            "chip": "POINT 1/3",
-        },
-        "lines": [
-            {"text": "まず1つ目。エッセンシャル思考の核心は、「より少なく、しかしより良く」です。",
-             "tts": "まずひとつめ。エッセンシャル思考の核心は、より少なく、しかしより良く、です。"},
-            {"text": "著者のグレッグ・マキューンさんは、選択肢を「90点以上かどうか」で判断しろ、と言います。",
-             "tts": "著者のグレッグ、マキューンさんは、選択肢を、九十点以上かどうかで判断しろ、と言います。"},
-            {"text": "90点未満は、全部0点と同じ。つまり、やらない。",
-             "tts": "九十点未満は、全部零点と同じ。つまり、やらない。"},
-            {"text": "正直、これ、頭では分かっていても、人間には難しいんですよね。"},
-            {"text": "目の前の依頼には、つい「はい」と言ってしまう。私もそうでした。"},
-            {"text": "そこで私は、この判断そのものを、AIに外注しました。",
-             "tts": "そこで私は、この判断そのものを、エーアイに外注しました。"},
+            {"sp": "labo", "text": "先生!時間術の本、30冊も買ったのだ!",
+             "tts": "先生!時間術の本、さんじゅっさつも買ったのだ!"},
+            {"sp": "mei", "text": "あら偉いわね。それで、全部読んだの?"},
+            {"sp": "labo", "text": "…読む前に、AIに分析させたのだ",
+             "tts": "読む前に、エーアイに分析させたのだ"},
+            {"sp": "mei", "text": "本末転倒だけど、結果はかなり面白かったわね"},
         ],
     },
     {
-        "slide": {
-            "kicker": "POINT 1 — やり方",
-            "title": "AIを「時間の門番」にする",
-            "bullets": ["最初に今期の目標と判断基準を登録",
-                        "依頼が来たら内容を貼り付けるだけ",
-                        "貢献度を100点満点で採点 → 90点未満は却下"],
-            "chip": "POINT 1/3",
-        },
+        "chip": "OP",
+        "impact": True,
+        "visual": {"type": "stat", "kicker": "30冊に共通していた主張は", "num": "3", "unit": "つ",
+                   "label": "…しかも「アレ」は入っていなかった"},
         "lines": [
-            {"text": "やり方はシンプルです。自分の今期の目標と、判断基準を、最初にAIに登録しておきます。",
-             "tts": "やり方はシンプルです。自分の今期の目標と、判断基準を、最初にエーアイに登録しておきます。"},
-            {"text": "新しいタスクや依頼が来たら、内容をそのままAIに貼り付けます。",
-             "tts": "新しいタスクや依頼が来たら、内容をそのままエーアイに貼り付けます。"},
-            {"text": "するとAIが、目標への貢献度を100点満点で採点して、90点未満なら「やらない」と返してくる。",
-             "tts": "するとエーアイが、目標への貢献度を百点満点で採点して、九十点未満なら、やらない、と返してくる。"},
-            {"text": "ポイントは、AIに「あなたは私の時間の門番です」という役割を与えることです。",
-             "tts": "ポイントは、エーアイに、あなたは私の時間の門番です、という役割を与えることです。"},
-            {"text": "人間だと情が入ってしまう判断も、門番AIは容赦なく落としてくれます。",
-             "tts": "人間だと情が入ってしまう判断も、門番エーアイは容赦なく落としてくれます。"},
-            {"text": "例えば「他部署の資料レビュー依頼」。門番の採点は35点。理由は「あなたの目標のどれにも直結しない」。",
-             "tts": "例えば、他部署の資料レビュー依頼。門番の採点は三十五点。理由は、あなたの目標のどれにも直結しない。"},
-            {"text": "人間の私なら、確実に引き受けていた案件です。"},
+            {"sp": "mei", "text": "30冊すべてに共通していた主張は、たった3つだったの",
+             "tts": "さんじゅっさつすべてに共通していた主張は、たったみっつだったの"},
+            {"sp": "labo", "text": "30冊分の共通点が、3つ…!?",
+             "tts": "さんじゅっさつぶんの共通点が、みっつ!?"},
+            {"sp": "mei", "text": "しかも、あなたが絶対に入ると思ってるアレは、入ってなかったわ"},
+            {"sp": "labo", "text": "気になって夜も眠れないのだ!"},
+        ],
+    },
+    # ---- 予告 --------------------------------------------------------------
+    {
+        "chip": "予告",
+        "visual": {"type": "bullets", "kicker": "この動画でわかること",
+                   "title": "30冊分析でわかった3つ",
+                   "items": ["① 全30冊に共通した主張トップ3",
+                             "② 意外にも少数派だった有名テクニック",
+                             "③ じゃあ本を読む意味はどこにあるのか"]},
+        "lines": [
+            {"sp": "mei", "text": "今日わかることは3つよ", "tts": "今日わかることはみっつよ"},
+            {"sp": "mei", "text": "1つ目、30冊に共通した主張トップ3",
+             "tts": "ひとつめ、さんじゅっさつに共通した主張トップスリー"},
+            {"sp": "mei", "text": "2つ目、意外にも少数派だった有名テクニック",
+             "tts": "ふたつめ、意外にも少数派だった有名テクニック"},
+            {"sp": "mei", "text": "3つ目、じゃあ本を読む意味はどこにあるのか",
+             "tts": "みっつめ、じゃあ本を読む意味はどこにあるのか"},
+            {"sp": "labo", "text": "最後のやつ、このチャンネルの存在意義が問われるのだ…"},
+            {"sp": "mei", "text": "そうね。でも、今日で一番大事な話よ"},
+        ],
+    },
+    # ---- 検証方法(透明性) -------------------------------------------------
+    {
+        "chip": "検証方法",
+        "visual": {"type": "bullets", "kicker": "どうやって分析したか",
+                   "title": "使ったのは本文ではない",
+                   "items": ["Amazonランキング上位から機械的に30冊",
+                             "目次 + 公開されている紹介文 + 自分の読書メモ",
+                             "本文の全文はAIに入れていない"]},
+        "lines": [
+            {"sp": "mei", "text": "まず、どうやって分析したかを正直に話すわ"},
+            {"sp": "mei", "text": "Amazonの時間術ランキング上位から、機械的に30冊選んだの",
+             "tts": "アマゾンの時間術ランキング上位から、機械的にさんじゅっさつ選んだの"},
+            {"sp": "mei", "text": "使ったのは目次と、公開されている紹介文と、私の読書メモだけ"},
+            {"sp": "labo", "text": "本文を全部AIに入れちゃダメなのだ?",
+             "tts": "本文を全部エーアイに入れちゃダメなのだ?"},
+            {"sp": "mei", "text": "著作権的にグレーだからやめておいたわ。ここは正直に言っておくわね"},
+            {"sp": "mei", "text": "そこから主張を抜き出して、同じ意味のものをまとめて、数える。それだけよ"},
         ],
     },
     {
-        "slide": {
-            "kicker": "POINT 1 — 検証結果(1週間)",
-            "title": "42件中、90点超えは\nたったの9件",
-            "bullets": ["判定にかけたタスク: 42件",
-                        "90点以上: 9件(約2割)",
-                        "= 仕事の8割は「やらなくていいこと」だった"],
-            "chip": "POINT 1/3",
-        },
+        "chip": "検証方法",
+        "visual": {"type": "bullets", "kicker": "分析パイプライン",
+                   "title": "187個 → 41個に圧縮",
+                   "items": ["抽出できた主張: 187個",
+                             "同じ意味を統合したユニーク主張: 41個",
+                             "20冊以上に登場したもの: たった3個"]},
         "lines": [
-            {"text": "1週間で門番AIに判定させたタスクは、全部で42件。",
-             "tts": "一週間で門番エーアイに判定させたタスクは、全部で四十二件。"},
-            {"text": "そのうち、90点を超えたのは、たったの9件でした。",
-             "tts": "そのうち、九十点を超えたのは、たったの九件でした。"},
-            {"text": "つまり、私の仕事の8割は、本の基準では「やらなくていいこと」だったわけです。",
-             "tts": "つまり、私の仕事の八割は、本の基準では、やらなくていいことだったわけです。"},
-            {"text": "これは正直、ショックでした。でも、空いた時間をどう守るか。ここからが本番です。"},
+            {"sp": "mei", "text": "抽出できた主張は、全部で187個",
+             "tts": "抽出できた主張は、全部でひゃくはちじゅうななこ"},
+            {"sp": "mei", "text": "同じ意味のものを統合したら、41個まで減ったわ",
+             "tts": "同じ意味のものを統合したら、よんじゅういっこまで減ったわ"},
+            {"sp": "labo", "text": "30冊で41個…けっこう被ってるのだ",
+             "tts": "さんじゅっさつでよんじゅういっこ。けっこう被ってるのだ"},
+            {"sp": "mei", "text": "そう。そのうち20冊以上に登場したのは、この3つだけ",
+             "tts": "そう。そのうちにじゅっさつ以上に登場したのは、このみっつだけ"},
         ],
     },
-    # ---- 4:30 ポイント② バッファ -------------------------------------------
+    # ---- POINT 1 -----------------------------------------------------------
     {
-        "slide": {
-            "kicker": "POINT 2 — バッファ設計",
-            "title": "見積もりは全部1.5倍にする",
-            "bullets": ["人間は「計画錯誤」で必ず短く見積もる",
-                        "本のルール: 所要時間 × 1.5",
-                        "カレンダー登録をAI経由に変えた"],
-            "chip": "POINT 2/3",
-        },
+        "chip": "POINT 1/3",
+        "visual": {"type": "bars", "kicker": "POINT 1 — 共通点トップ3",
+                   "title": "30冊中、何冊が言っていたか",
+                   "items": [("やらないことを決める", 24, 30),
+                             ("重要と緊急を分ける", 22, 30),
+                             ("似た作業はまとめて処理", 21, 30)]},
         "lines": [
-            {"text": "2つ目のポイントは、バッファ、つまり余白の設計です。",
-             "tts": "ふたつめのポイントは、バッファ、つまり余白の設計です。"},
-            {"text": "本には、「見積もり時間を1.5倍にしろ」というルールが出てきます。",
-             "tts": "本には、見積もり時間を一点五倍にしろ、というルールが出てきます。"},
-            {"text": "人間には「計画錯誤」という癖があって、作業時間をいつも短く見積もってしまうからです。"},
-            {"text": "分かっちゃいるけど、手帳の上では今日も自分を過信する。それが人間です。"},
-            {"text": "そこで今回は、カレンダーへの予定登録を、すべてAI経由に変えました。",
-             "tts": "そこで今回は、カレンダーへの予定登録を、すべてエーアイ経由に変えました。"},
-        ],
-    },
-    {
-        "slide": {
-            "kicker": "POINT 2 — やり方",
-            "title": "予定は文章で送るだけ",
-            "bullets": ["「資料作成 1時間」と送る",
-                        "→ 90分の枠 + 直後に15分の予備枠",
-                        "移動時間・休憩も自動で追加"],
-            "chip": "POINT 2/3",
-        },
-        "lines": [
-            {"text": "予定を文章でAIに送ると、所要時間を1.5倍にして、前後に移動時間と休憩を足した形に整えてくれます。",
-             "tts": "予定を文章でエーアイに送ると、所要時間を一点五倍にして、前後に移動時間と休憩を足した形に整えてくれます。"},
-            {"text": "例えば「資料作成、1時間」と送ると、90分の枠と、直後に15分の予備枠が入ります。",
-             "tts": "例えば、資料作成、一時間、と送ると、九十分の枠と、直後に十五分の予備枠が入ります。"},
-            {"text": "最初の2日間は、カレンダーがスカスカに見えて、正直かなり不安になります。",
-             "tts": "最初の二日間は、カレンダーがスカスカに見えて、正直かなり不安になります。"},
-            {"text": "「こんなに余白を取って、仕事が回るのか?」と。"},
-            {"text": "でも、ここで面白いことが起きました。"},
+            {"sp": "mei", "text": "第1位、やらないことを決める。30冊中24冊",
+             "tts": "だいいちい、やらないことを決める。さんじゅっさつちゅう、にじゅうよんさつ"},
+            {"sp": "mei", "text": "第2位、重要と緊急を分ける。22冊",
+             "tts": "だいにい、重要と緊急を分ける。にじゅうにさつ"},
+            {"sp": "mei", "text": "第3位、似た作業はまとめて処理する。21冊",
+             "tts": "だいさんい、似た作業はまとめて処理する。にじゅういっさつ"},
+            {"sp": "labo", "text": "…どれも聞いたことあるやつなのだ"},
+            {"sp": "mei", "text": "そうなの。つまりこの3つは、もう常識になってるってことね",
+             "tts": "そうなの。つまりこのみっつは、もう常識になってるってことね"},
+            {"sp": "mei", "text": "逆に言えば、ここだけなら本を買わなくても手に入るわ"},
         ],
     },
     {
-        "slide": {
-            "kicker": "POINT 2 — 驚きの結果",
-            "title": "1.5倍見積もりの的中率は\nほぼ100%だった",
-            "bullets": ["時間内に終わらなかったタスク: 42件中3件",
-                        "= 今までの締め切りは「自分への嘘」",
-                        "余白のおかげで突発対応も余裕に"],
-            "chip": "POINT 2/3",
-        },
+        "chip": "POINT 1/3",
+        "visual": {"type": "bullets", "kicker": "POINT 1 — 言い方が違うだけ",
+                   "title": "同じことを30通りで\n言っている",
+                   "items": ["『エッセンシャル思考』→ 90点ルール",
+                             "『7つの習慣』→ 第2領域に時間を使う",
+                             "どちらも中身は「取捨選択」"]},
         "lines": [
-            {"text": "1週間の記録を取ると、1.5倍にした見積もりは、ほぼぴったり当たっていたんです。",
-             "tts": "一週間の記録を取ると、一点五倍にした見積もりは、ほぼぴったり当たっていたんです。"},
-            {"text": "42件中、時間内に終わらなかったタスクは3件だけ。",
-             "tts": "四十二件中、時間内に終わらなかったタスクは三件だけ。"},
-            {"text": "つまり今までの私は、毎日、自分に嘘の締め切りを並べていたことになります。"},
-            {"text": "さらに副作用として、予定が減った分、突発の相談を受ける余裕ができました。"},
-            {"text": "本の中で一番地味なルールが、検証では一番効きました。これは意外でした。"},
-            {"text": "ちなみに皆さんは、自分の見積もりが何倍ずれてるか、測ったことありますか? よければコメントで教えてください。"},
+            {"sp": "mei", "text": "1位の「やらないことを決める」は、本によって言い方が違うだけなの",
+             "tts": "いちいの、やらないことを決めるは、本によって言い方が違うだけなの"},
+            {"sp": "mei", "text": "エッセンシャル思考なら90点ルール、7つの習慣なら第2領域",
+             "tts": "エッセンシャル思考ならきゅうじゅってんルール、ななつの習慣ならだいにりょういき"},
+            {"sp": "mei", "text": "言葉は違うけど、やってることは同じ。取捨選択よ"},
+            {"sp": "labo", "text": "30冊読んでやっと気づくやつなのだ…",
+             "tts": "さんじゅっさつ読んでやっと気づくやつなのだ"},
+            {"sp": "mei", "text": "だから「1冊で十分」とも言えるし…"},
+            {"sp": "mei", "text": "「言い方が30通りあるから、自分に刺さる1つを探せ」とも言えるわね",
+             "tts": "言い方がさんじゅうどおりあるから、自分に刺さるひとつを探せ、とも言えるわね"},
         ],
     },
-    # ---- 8:00 ポイント③ 断り方 ---------------------------------------------
+    # ---- POINT 2(中盤の驚き) ---------------------------------------------
     {
-        "slide": {
-            "kicker": "POINT 3 — 断る技術",
-            "title": "断り文は全部AIに\n下書きさせる",
-            "bullets": ["本の教え:「きっぱりと、優雅に断る」",
-                        "でも断り文を考える時間がもうストレス",
-                        "→ 下書きはAIの仕事にする"],
-            "chip": "POINT 3/3",
-        },
+        "chip": "POINT 2/3",
+        "impact": True,
+        "visual": {"type": "bars", "kicker": "POINT 2 — 意外な少数派",
+                   "title": "有名テクニックは何冊?",
+                   "items": [("早起き", 8, 30), ("朝活", 6, 30), ("ポモドーロ", 9, 30)]},
         "lines": [
-            {"text": "3つ目は、多くの人が一番苦手なやつ。「断る」です。",
-             "tts": "みっつめは、多くの人が一番苦手なやつ。断る、です。"},
-            {"text": "本では、「きっぱりと、しかし優雅に断る」ことが大事だとされています。"},
-            {"text": "とはいえ、断りの文面を考える時間そのものが、もうストレスですよね。"},
-            {"text": "なので、断りのメール文は、全部AIに下書きさせることにしました。",
-             "tts": "なので、断りのメール文は、全部エーアイに下書きさせることにしました。"},
+            {"sp": "labo", "text": "ところで先生、「早起き」は何位だったのだ?"},
+            {"sp": "mei", "text": "30冊中、8冊よ", "tts": "さんじゅっさつちゅう、はっさつよ"},
+            {"sp": "labo", "text": "えっ、たった8冊!?", "tts": "えっ、たったはっさつ!?"},
+            {"sp": "mei", "text": "朝活にいたっては6冊。ポモドーロも9冊だったわ",
+             "tts": "朝活にいたってはろくさつ。ポモドーロもきゅうさつだったわ"},
+            {"sp": "labo", "text": "時間術といえば早起き、じゃなかったのだ…?"},
+            {"sp": "mei", "text": "それ、たぶん本じゃなくてSNSで刷り込まれたイメージね",
+             "tts": "それ、たぶん本じゃなくて、エスエヌエスで刷り込まれたイメージね"},
+            {"sp": "mei", "text": "有名なテクニックほど、実は少数派だった。これが一番の発見よ"},
         ],
     },
+    # ---- POINT 3 -----------------------------------------------------------
     {
-        "slide": {
-            "kicker": "POINT 3 — テンプレの型",
-            "title": "「感謝 → 理由 → 代替案」\nを3行で",
-            "bullets": ["渡す情報: 相手との関係 / 依頼内容 / 本当の理由",
-                        "書かせる型: 感謝・理由・代替案の3行",
-                        "代替案が自動で入るのが最大のメリット"],
-            "chip": "POINT 3/3",
-        },
+        "chip": "POINT 3/3",
+        "visual": {"type": "stat", "kicker": "POINT 3 — 差分にこそ価値がある",
+                   "num": "19", "unit": "個",
+                   "label": "41個中、1冊にしか出てこなかった主張"},
         "lines": [
-            {"text": "プロンプトの型はこうです。相手との関係、依頼の内容、断る本当の理由。この3つを渡す。",
-             "tts": "プロンプトの型はこうです。相手との関係、依頼の内容、断る本当の理由。この三つを渡す。"},
-            {"text": "そして、「感謝、理由、代替案」の順で、3行以内で書かせる。",
-             "tts": "そして、感謝、理由、代替案の順で、三行以内で書かせる。"},
-            {"text": "代替案まで自動で入るのが、AIを使う最大のメリットです。",
-             "tts": "代替案まで自動で入るのが、エーアイを使う最大のメリットです。"},
-            {"text": "例えば、「今週は難しいのですが、来週火曜なら30分お話しできます」のような形ですね。",
-             "tts": "例えば、今週は難しいのですが、来週火曜なら三十分お話しできます、のような形ですね。"},
-            {"text": "ゼロから断り文を書くのと、下書きを直すのとでは、心理的な負担が全然違います。"},
-        ],
-    },
-    {
-        "slide": {
-            "kicker": "POINT 3 — 使ってみた結果",
-            "title": "1週間で6回断って、\n関係は壊れなかった",
-            "bullets": ["断った依頼: 6件(うち5件は下書きほぼそのまま)",
-                        "会議も4本辞退 → 人間関係は無事",
-                        "今日やること: 断り文の型をAIに登録"],
-            "chip": "POINT 3/3",
-        },
-        "lines": [
-            {"text": "この1週間で、依頼を断ったのは6回。",
-             "tts": "この一週間で、依頼を断ったのは六回。"},
-            {"text": "うち5回は、AIの下書きほぼそのままで、角が立たない文章でした。",
-             "tts": "うち五回は、エーアイの下書きほぼそのままで、角が立たない文章でした。"},
-            {"text": "会議も、門番AIの判定を理由に4本辞退しましたが、人間関係は今のところ壊れていません。",
-             "tts": "会議も、門番エーアイの判定を理由に四本辞退しましたが、人間関係は今のところ壊れていません。"},
-            {"text": "今日からできるアクションとしては、まず断り文の型だけでも、AIに登録しておくのがおすすめです。",
-             "tts": "今日からできるアクションとしては、まず断り文の型だけでも、エーアイに登録しておくのがおすすめです。"},
-            {"text": "今回使ったプロンプトは、3つとも概要欄に置いておきます。",
-             "tts": "今回使ったプロンプトは、三つとも概要欄に置いておきます。"},
-        ],
-    },
-    # ---- 11:30 失敗談+本への批評 -------------------------------------------
-    {
-        "slide": {
-            "kicker": "冒頭で予告した話",
-            "title": "大失敗:AIを信じすぎた",
-            "bullets": ["低得点の依頼を機械的に断った",
-                        "→ 実は上司が温めていた企画の相談だった",
-                        "AIは「文脈の外の価値」をまだ読めない"],
-            "chip": "本音",
-        },
-        "lines": [
-            {"text": "さて、冒頭で予告した、大失敗の話です。"},
-            {"text": "門番AIを信じすぎて、ある依頼を機械的に断ったんですが…",
-             "tts": "門番エーアイを信じすぎて、ある依頼を機械的に断ったんですが。"},
-            {"text": "それが実は、上司が数ヶ月温めていた新企画の、最初の相談だったんです。"},
-            {"text": "採点すれば低い。でも、関係としては最重要。AIは、文脈の外にある価値をまだ読めません。",
-             "tts": "採点すれば低い。でも、関係としては最重要。エーアイは、文脈の外にある価値を、まだ読めません。"},
-            {"text": "翌日、廊下で謝り倒しました。皆さんは同じ失敗をしないでください。"},
-            {"text": "なので結論。AIに任せていいのは「判断の下書き」まで。最終判断は、人間の仕事です。",
-             "tts": "なので結論。エーアイに任せていいのは、判断の下書きまで。最終判断は、人間の仕事です。"},
+            {"sp": "mei", "text": "最後よ。1冊にしか出てこなかった主張が、19個あったの",
+             "tts": "最後よ。いっさつにしか出てこなかった主張が、じゅうきゅうこあったの"},
+            {"sp": "labo", "text": "41個中19個が、その本だけのオリジナル…!",
+             "tts": "よんじゅういっこちゅう、じゅうきゅうこが、その本だけのオリジナル!"},
+            {"sp": "mei", "text": "そう。ここが今回、一番面白かったところ"},
+            {"sp": "mei", "text": "共通の3つは、どの本にも書いてある。つまり要約で済む部分よ",
+             "tts": "共通のみっつは、どの本にも書いてある。つまり要約で済む部分よ"},
+            {"sp": "mei", "text": "でも本当の価値は、その本にしかない19個のほうにあるの",
+             "tts": "でも本当の価値は、その本にしかない、じゅうきゅうこのほうにあるの"},
+            {"sp": "labo", "text": "要約だけ見てたら、そこは絶対に手に入らないのだ…"},
         ],
     },
     {
-        "slide": {
-            "kicker": "まとめ — 本への正直な評価",
-            "title": "『エッセンシャル思考』は\nAI時代にこそ効く",
-            "bullets": ["「何をやらないか」を決める本として今も最高",
-                        "ただし「実行」の部分は自分でAI化が必要",
-                        "90点ルール / 1.5倍バッファ / 優雅な断り"],
-            "chip": "まとめ",
-        },
+        "chip": "POINT 3/3",
+        "visual": {"type": "bullets", "kicker": "19個の中で一番刺さったもの",
+                   "title": "予定表には\n「やらないこと」を書く",
+                   "items": ["カレンダーに「何もしない時間」を先に入れる",
+                             "登場は30冊中わずか1冊",
+                             "共通点にはならない。でも刺さる人には刺さる"]},
         "lines": [
-            {"text": "最後に、本への正直な評価です。"},
-            {"text": "エッセンシャル思考は、「何をやらないか」を決める本としては、今でも最高の一冊だと思います。"},
-            {"text": "一方で、書かれた時代にAIはなかったので、「減らした後にどう実行するか」は、今なら自分でアップデートする必要があります。",
-             "tts": "一方で、書かれた時代にエーアイはなかったので、減らした後にどう実行するかは、今なら自分でアップデートする必要があります。"},
-            {"text": "そこを補うのが、このチャンネル「AI実践読書ラボ」の役目です。",
-             "tts": "そこを補うのが、このチャンネル、エーアイ実践読書ラボの役目です。"},
-            {"text": "本編で紹介した数字や手順の詳細も、概要欄にまとめてあります。気になる方は本もぜひ読んでみてください。"},
+            {"sp": "mei", "text": "ちなみに19個の中で、私に一番刺さったのはこれ",
+             "tts": "ちなみにじゅうきゅうこの中で、私に一番刺さったのはこれ"},
+            {"sp": "mei", "text": "カレンダーに「この時間は何もしない」と先に書く、という主張ね"},
+            {"sp": "labo", "text": "それ、1冊にしか書いてないのだ?", "tts": "それ、いっさつにしか書いてないのだ?"},
+            {"sp": "mei", "text": "ええ。でも私はこれで一番救われたわ"},
+            {"sp": "mei", "text": "共通点にはならない。でも刺さる人には刺さる。それが本の価値よ"},
+            {"sp": "labo", "text": "要約は地図で、本は現地ってことなのだ!"},
+            {"sp": "mei", "text": "いいこと言うわね。まさにそれよ"},
         ],
     },
-    # ---- 13:00 CTA ---------------------------------------------------------
+    # ---- 限界の開示 --------------------------------------------------------
     {
-        "slide": {
-            "kicker": "次回予告",
-            "title": "『7つの習慣』の週間計画を\nAIエージェントに1ヶ月運用させる",
-            "bullets": ["本の教えを、AIで実行可能にする",
-                        "毎週金曜 19時 更新",
-                        "チャンネル登録で次回の検証をお見逃しなく"],
-            "chip": "次回",
-        },
+        "chip": "正直な話",
+        "visual": {"type": "bullets", "kicker": "この分析の限界",
+                   "title": "数字は「目安」として\n見てほしい",
+                   "items": ["選書はランキング順 → 名著が漏れている可能性",
+                             "AIのタグ付けはブレる → 3回実行し2回以上一致のみ採用",
+                             "本文全文は未使用のため取りこぼしがある"]},
         "lines": [
-            {"text": "次回は、『7つの習慣』の週間計画を、AIエージェントに1ヶ月運用させた結果を公開します。",
-             "tts": "次回は、七つの習慣の週間計画を、エーアイエージェントに一ヶ月運用させた結果を公開します。"},
-            {"text": "本の教えを、AIで実行可能にする。そんな検証を毎週やっています。",
-             "tts": "本の教えを、エーアイで実行可能にする。そんな検証を毎週やっています。"},
-            {"text": "続きが気になる方は、チャンネル登録をお願いします。"},
-            {"text": "それでは、また次の動画でお会いしましょう。"},
+            {"sp": "mei", "text": "もちろん、この分析には限界があるわ"},
+            {"sp": "mei", "text": "選書はランキング順だから、名著が漏れている可能性がある"},
+            {"sp": "mei", "text": "AIのタグ付けもブレるから、3回実行して2回以上一致したものだけ採用したの",
+             "tts": "エーアイのタグ付けもブレるから、さんかい実行して、にかい以上一致したものだけ採用したの"},
+            {"sp": "labo", "text": "それでもブレたのだ?"},
+            {"sp": "mei", "text": "ええ。だから数字は目安として見てちょうだい"},
+        ],
+    },
+    # ---- まとめ + 次回 -----------------------------------------------------
+    {
+        "chip": "まとめ",
+        "visual": {"type": "bullets", "kicker": "今日のまとめ",
+                   "title": "30冊分析の結論",
+                   "items": ["共通点はたった3つ。ここは要約で足りる",
+                             "有名テクニックほど実は少数派だった",
+                             "本の価値は「その本にしかない差分」にある"]},
+        "lines": [
+            {"sp": "mei", "text": "まとめるわ。共通点は3つだけ、有名テクは少数派、価値は差分にある",
+             "tts": "まとめるわ。共通点はみっつだけ、有名テクは少数派、価値は差分にある"},
+            {"sp": "labo", "text": "今日から何をすればいいのだ?"},
+            {"sp": "mei", "text": "まず「やらないこと」を3つ書き出すこと",
+             "tts": "まず、やらないことを、みっつ書き出すこと"},
+            {"sp": "mei", "text": "24冊が言ってるんだから、たぶん本当よ",
+             "tts": "にじゅうよんさつが言ってるんだから、たぶん本当よ"},
+            {"sp": "labo", "text": "みんなは何を「やらない」ことにするのだ? コメントで教えてほしいのだ!"},
+        ],
+    },
+    {
+        "chip": "次回予告",
+        "visual": {"type": "bullets", "kicker": "次回予告",
+                   "title": "41個の主張を\nAIに全部やらせてみる",
+                   "items": ["本の教えを、AIで実行可能にする",
+                             "毎週金曜 19時 更新",
+                             "チャンネル登録で次回の検証をお見逃しなく"]},
+        "lines": [
+            {"sp": "mei", "text": "次回は、この41個の主張をAIエージェントに全部やらせてみるわ",
+             "tts": "次回は、このよんじゅういっこの主張を、エーアイエージェントに全部やらせてみるわ"},
+            {"sp": "labo", "text": "本の教えを、AIで実行可能にするチャンネルなのだ!",
+             "tts": "本の教えを、エーアイで実行可能にするチャンネルなのだ!"},
+            {"sp": "mei", "text": "気に入ったらチャンネル登録をお願いね"},
+            {"sp": "labo", "text": "それじゃ、また次の動画で会うのだ!"},
         ],
     },
 ]
 
 
+# ---------------------------------------------------------------------------
+# 音声合成
+# ---------------------------------------------------------------------------
+def voicevox_available(base=VOICEVOX_URL):
+    try:
+        with urllib.request.urlopen(f"{base}/version", timeout=3) as r:
+            return r.status == 200
+    except (urllib.error.URLError, OSError):
+        return False
+
+
+def tts_voicevox(text, speaker_id, out_wav, base=VOICEVOX_URL):
+    q = urllib.parse.urlencode({"text": text, "speaker": speaker_id})
+    req = urllib.request.Request(f"{base}/audio_query?{q}", method="POST")
+    with urllib.request.urlopen(req, timeout=30) as r:
+        query = json.load(r)
+    query["speedScale"] = 1.05
+    query["prePhonemeLength"] = 0.05
+    query["postPhonemeLength"] = 0.1
+    body = json.dumps(query).encode()
+    req = urllib.request.Request(
+        f"{base}/synthesis?speaker={speaker_id}", data=body, method="POST",
+        headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        out_wav.write_bytes(r.read())
+
+
+def tts_openjtalk(text, cfg, out_wav):
+    txt = out_wav.with_suffix(".txt")
+    txt.write_text(text, encoding="utf-8")
+    subprocess.run(
+        ["open_jtalk", "-x", OJT_DIC, "-m", OJT_VOICE,
+         "-fm", str(cfg["fm"]), "-r", str(cfg["rate"]), "-s", "48000",
+         "-ow", str(out_wav), str(txt)],
+        check=True, capture_output=True)
+
+
+def read_wav(path):
+    with wave.open(str(path)) as w:
+        n, rate, ch, sw = w.getnframes(), w.getframerate(), w.getnchannels(), w.getsampwidth()
+        raw = w.readframes(n)
+    dtype = {1: np.uint8, 2: np.int16, 4: np.int32}[sw]
+    data = np.frombuffer(raw, dtype=dtype).astype(np.float32)
+    if ch > 1:
+        data = data.reshape(-1, ch).mean(axis=1)
+    return data, rate
+
+
+def mouth_envelope(samples, rate, duration, fps):
+    """フレームごとの口の開き具合(0..1)を音量から作る."""
+    n_frames = max(1, int(duration * fps))
+    env = np.zeros(n_frames, dtype=np.float32)
+    step = rate / fps
+    for i in range(n_frames):
+        a, b = int(i * step), int((i + 1) * step)
+        chunk = samples[a:b]
+        if len(chunk):
+            env[i] = np.sqrt(np.mean(chunk ** 2))
+    peak = env.max() if env.max() > 0 else 1.0
+    return np.clip(env / peak * 1.6, 0, 1)
+
+
+# ---------------------------------------------------------------------------
+# 描画ヘルパ
+# ---------------------------------------------------------------------------
+_font_cache = {}
+
+
 def font(path, size):
-    return ImageFont.truetype(path, size)
+    key = (path, size)
+    if key not in _font_cache:
+        _font_cache[key] = ImageFont.truetype(path, size)
+    return _font_cache[key]
 
 
-def wrap_text(draw, text, fnt, max_w):
-    """日本語向けの単純な文字単位折り返し."""
+def wrap(draw, text, fnt, max_w):
     lines, cur = [], ""
     for ch in text:
+        if ch == "\n":
+            lines.append(cur)
+            cur = ""
+            continue
         if draw.textlength(cur + ch, font=fnt) > max_w:
             lines.append(cur)
             cur = ch
@@ -350,129 +417,336 @@ def wrap_text(draw, text, fnt, max_w):
     return lines
 
 
-def render_slide(slide):
-    img = Image.new("RGB", (W, H), BG)
+def outlined_text(d, xy, text, fnt, fill, outline=WHITE, width=4, anchor=None):
+    x, y = xy
+    for dx in range(-width, width + 1):
+        for dy in range(-width, width + 1):
+            if dx * dx + dy * dy <= width * width:
+                d.text((x + dx, y + dy), text, font=fnt, fill=outline, anchor=anchor)
+    d.text((x, y), text, font=fnt, fill=fill, anchor=anchor)
+
+
+def draw_character(key, mouth, blink, dim):
+    """2頭身のオリジナル簡易キャラを RGBA で返す(VOICEVOXの立ち絵ではない)."""
+    cw, ch = 300, 300
+    img = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    # 左のアクセントバーとパネル
-    d.rectangle([0, 0, 14, H], fill=ACCENT)
-    d.rectangle([40, 150, W - 40, H - 150], fill=BG_PANEL)
-    # kicker / chip / 透かし
-    d.text((60, 50), slide["kicker"], font=font(FONT_BOLD, 30), fill=ACCENT)
-    chip = slide.get("chip", "")
-    if chip:
-        f = font(FONT_BOLD, 26)
-        tw = d.textlength(chip, font=f)
-        d.rounded_rectangle([W - 60 - tw - 36, 44, W - 60, 96], radius=12, outline=ACCENT, width=3)
-        d.text((W - 60 - tw - 18, 54), chip, font=f, fill=ACCENT)
-    d.text((W - 60, 106), f"{CHANNEL} | {WATERMARK}", font=font(FONT_REG, 20), fill=SUBTEXT, anchor="ra")
-    # タイトル(改行対応)
-    y = 190
-    for tl in slide["title"].split("\n"):
-        d.text((90, y), tl, font=font(FONT_BOLD, 58), fill=TEXT)
-        y += 78
-    # 箇条書き
-    y += 24
-    for b in slide.get("bullets", []):
-        d.ellipse([96, y + 16, 116, y + 36], fill=ACCENT)
-        d.text((140, y), b, font=font(FONT_REG, 36), fill=TEXT)
-        y += 62
-    # フッター
-    d.text((60, H - 50), CHANNEL, font=font(FONT_BOLD, 26), fill=SUBTEXT)
+    spec = SPEAKERS[key]
+    body = spec["body"]
+    hair = spec["hair"]
+    if dim:  # 聞き手はトーンを落として、話者を目立たせる
+        body = tuple(int(c * 0.45 + 252 * 0.55) for c in body)
+        hair = tuple(int(c * 0.45 + 252 * 0.55) for c in hair)
+    cx = cw // 2
+    # 体
+    d.rounded_rectangle([cx - 74, 186, cx + 74, 300], radius=48, fill=body, outline=INK, width=6)
+    # 腕
+    d.rounded_rectangle([cx - 104, 208, cx - 62, 276], radius=21, fill=body, outline=INK, width=6)
+    d.rounded_rectangle([cx + 62, 208, cx + 104, 276], radius=21, fill=body, outline=INK, width=6)
+    # 頭
+    d.ellipse([cx - 84, 40, cx + 84, 208], fill=(255, 240, 226), outline=INK, width=6)
+    # 髪
+    d.chord([cx - 84, 40, cx + 84, 208], 180, 360, fill=hair, outline=INK, width=6)
+    if spec["side"] == "left":
+        d.ellipse([cx - 104, 60, cx - 52, 130], fill=hair, outline=INK, width=6)   # アホ毛風
+    else:
+        d.ellipse([cx + 56, 78, cx + 108, 190], fill=hair, outline=INK, width=6)   # サイドヘア
+        d.ellipse([cx - 108, 78, cx - 56, 190], fill=hair, outline=INK, width=6)
+    # 目
+    for ex in (cx - 36, cx + 36):
+        if blink:
+            d.line([ex - 17, 132, ex + 17, 132], fill=INK, width=6)
+        else:
+            d.ellipse([ex - 17, 112, ex + 17, 150], fill=INK)
+            d.ellipse([ex - 7, 120, ex + 3, 132], fill=WHITE)
+    # 頬
+    d.ellipse([cx - 72, 148, cx - 46, 166], fill=(255, 170, 180))
+    d.ellipse([cx + 46, 148, cx + 72, 166], fill=(255, 170, 180))
+    # 口(mouth: 0=閉じ 〜 1=大きく開く)
+    if mouth < 0.18:
+        d.line([cx - 14, 172, cx + 14, 172], fill=INK, width=5)
+    else:
+        oh = int(8 + mouth * 26)
+        d.ellipse([cx - 16, 166, cx + 16, 166 + oh], fill=(120, 52, 68), outline=INK, width=4)
     return img
 
 
-def add_subtitle(base, text):
-    img = base.convert("RGBA")
-    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(overlay)
-    f = font(FONT_BOLD, 34)
-    lines = wrap_text(d, text, f, W - 240)[:2]
-    band_h = 44 * len(lines) + 36
-    d.rectangle([0, H - band_h, W, H], fill=(0, 0, 0, 185))
-    y = H - band_h + 16
-    for ln in lines:
-        d.text((W // 2, y), ln, font=f, fill=(255, 255, 255, 255), anchor="ma")
-        y += 44
-    return Image.alpha_composite(img, overlay).convert("RGB")
+def build_char_cache():
+    cache = {}
+    for key in SPEAKERS:
+        for dim in (False, True):
+            for blink in (False, True):
+                for m in range(4):   # 口の開き 4段階
+                    cache[(key, dim, blink, m)] = draw_character(key, m / 3.0, blink, dim)
+    return cache
 
 
-def tts(text, out_wav):
-    txt = out_wav.with_suffix(".txt")
-    txt.write_text(text, encoding="utf-8")
-    subprocess.run(
-        ["open_jtalk", "-x", DIC, "-m", VOICE, "-r", "1.05", "-s", "48000",
-         "-ow", str(out_wav), str(txt)],
-        check=True, capture_output=True,
-    )
-    with wave.open(str(out_wav)) as w:
-        return w.getnframes() / w.getframerate()
+def draw_burst(d, cx, cy, n=26, r0=170, r1=900, color=(255, 236, 190)):
+    """集中線."""
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        wdt = 0.055
+        pts = [
+            (cx + r0 * math.cos(a), cy + r0 * math.sin(a)),
+            (cx + r1 * math.cos(a - wdt), cy + r1 * math.sin(a - wdt)),
+            (cx + r1 * math.cos(a + wdt), cy + r1 * math.sin(a + wdt)),
+        ]
+        d.polygon(pts, fill=color)
 
 
-def render_thumbnail(out_path):
-    img = Image.new("RGB", (W, H), (16, 20, 32))
+def scene_background(scene):
+    """シーンの静止部分(背景・帯・カード枠)を1枚作る."""
+    img = Image.new("RGB", (W, H), CREAM)
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, W, H], outline=ACCENT, width=10)
-    d.text((70, 60), "エッセンシャル思考 × AI検証", font=font(FONT_BOLD, 44), fill=ACCENT)
-    d.text((70, 150), "本の教えを", font=font(FONT_BOLD, 84), fill=TEXT)
-    d.text((70, 260), "AIに1週間", font=font(FONT_BOLD, 110), fill=ACCENT)
-    d.text((70, 400), "任せた結果…", font=font(FONT_BOLD, 84), fill=TEXT)
-    d.rounded_rectangle([70, 540, 760, 640], radius=18, fill=ACCENT)
-    d.text((100, 558), "会議 -4本 / 退社 -50分", font=font(FONT_BOLD, 52), fill=(16, 20, 32))
-    d.text((W - 50, H - 70), CHANNEL + " #01", font=font(FONT_BOLD, 34), fill=SUBTEXT, anchor="ra")
-    img.save(out_path)
+    # 背景のドット模様
+    for y in range(0, H, 40):
+        for x in range(0, W, 40):
+            d.ellipse([x, y, x + 6, y + 6], fill=(240, 232, 214))
+    if scene.get("impact"):
+        draw_burst(d, W // 2, 250)
+    # トップ帯
+    d.rounded_rectangle([-30, -40, W + 30, 86], radius=26, fill=YELLOW, outline=INK, width=6)
+    vis = scene["visual"]
+    outlined_text(d, (44, 18), vis["kicker"], font(FONT_BOLD, 38), INK, WHITE, 3)
+    chip = scene.get("chip", "")
+    if chip:
+        f = font(FONT_BOLD, 28)
+        tw = d.textlength(chip, font=f)
+        d.rounded_rectangle([W - 44 - tw - 40, 12, W - 44, 68], radius=16, fill=PINK, outline=INK, width=5)
+        d.text((W - 44 - tw - 20, 24), chip, font=f, fill=WHITE)
+    # メインカード
+    d.rounded_rectangle([56, 108, W - 56, 372], radius=30, fill=WHITE, outline=INK, width=6)
+    d.text((640, 382), f"{CHANNEL} / {WATERMARK}", font=font(FONT_REG, 17),
+           fill=(170, 160, 145), anchor="ma")
+    # 種類別の静止部分
+    if vis["type"] == "bullets":
+        y = 132
+        for tl in vis["title"].split("\n"):
+            d.text((92, y), tl, font=font(FONT_BOLD, 46), fill=INK)
+            y += 56
+        y += 8
+        for i, it in enumerate(vis["items"]):
+            col = [PINK, SKY, PURPLE][i % 3]
+            d.rounded_rectangle([92, y, 124, y + 32], radius=10, fill=col)
+            d.text((142, y - 2), it, font=font(FONT_REG, 32), fill=INK)
+            y += 48
+    elif vis["type"] == "stat":
+        d.text((640, 140), vis["label"], font=font(FONT_BOLD, 32), fill=(120, 118, 130), anchor="ma")
+    elif vis["type"] == "bars":
+        d.text((92, 128), vis["title"], font=font(FONT_BOLD, 40), fill=INK)
+    return img
 
 
-def main(out_dir):
-    out = Path(out_dir)
-    frames_dir = out / "frames"
+def draw_visual_anim(img, scene, t):
+    """カード内のアニメーション部分(カウントアップ/バー伸長)を重ねる."""
+    vis = scene["visual"]
+    d = ImageDraw.Draw(img)
+    p = min(1.0, t / 0.9)
+    p = 1 - (1 - p) ** 3          # ease-out
+    if vis["type"] == "stat":
+        try:
+            target = int(vis["num"])
+            shown = str(int(round(target * p)))
+        except ValueError:
+            shown = vis["num"]
+        f = font(FONT_BOLD, 150)
+        uf = font(FONT_BOLD, 60)
+        tw = d.textlength(shown, font=f)
+        uw = d.textlength(vis["unit"], font=uf)
+        x = 640 - (tw + uw + 14) / 2
+        outlined_text(d, (x, 186), shown, f, PINK, INK, 5)
+        outlined_text(d, (x + tw + 14, 268), vis["unit"], uf, INK, WHITE, 3)
+    elif vis["type"] == "bars":
+        y = 192
+        for i, (label, val, total) in enumerate(vis["items"]):
+            col = [PINK, SKY, PURPLE][i % 3]
+            d.text((92, y + 4), label, font=font(FONT_REG, 30), fill=INK)
+            bx0, bx1 = 460, 1080
+            d.rounded_rectangle([bx0, y, bx1, y + 42], radius=21, fill=(238, 234, 226))
+            wpx = int((bx1 - bx0) * (val / total) * p)
+            if wpx > 12:
+                d.rounded_rectangle([bx0, y, bx0 + wpx, y + 42], radius=21, fill=col,
+                                    outline=INK, width=4)
+            d.text((1100, y + 4), f"{int(round(val * p))}/{total}",
+                   font=font(FONT_BOLD, 30), fill=INK)
+            y += 56
+
+
+BUBBLE_W, BUBBLE_M = 720, 140    # 吹き出し本体の幅 / しっぽ用の左右マージン
+BUBBLE_BOTTOM = 612              # 吹き出し本体の下端の画面Y
+BUBBLE_LEFT = {"left": 210, "right": 270}   # 話者別の本体左端X(顔を隠さない位置)
+CHAR_X = {"left": -40, "right": 980}        # キャラ立ち位置(300pxスプライトの左上X)
+CHAR_Y = 428
+
+
+def render_bubble(text, speaker):
+    """吹き出し(=字幕)を返す。(RGBA画像, 本体の高さ) — 本体左上は (BUBBLE_M, 0)."""
+    bw, m, pad = BUBBLE_W, BUBBLE_M, 34
+    f = font(FONT_BOLD, 34)
+    tmp = ImageDraw.Draw(Image.new("RGB", (10, 10)))
+    lines = wrap(tmp, text, f, bw - pad * 2)
+    bh = pad * 2 + 46 * len(lines)
+    img = Image.new("RGBA", (bw + m * 2, bh + 70), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    left = SPEAKERS[speaker]["side"] == "left"
+    # しっぽ(先に描いて本体で根元を隠す)
+    if left:
+        tail = [(m + 30, bh - 20), (m + 110, bh - 20), (m - 74, bh + 48)]
+    else:
+        tail = [(m + bw - 110, bh - 20), (m + bw - 30, bh - 20), (m + bw + 74, bh + 48)]
+    d.polygon(tail, fill=WHITE)
+    d.line([tail[0], tail[2]], fill=INK, width=6)
+    d.line([tail[1], tail[2]], fill=INK, width=6)
+    # 本体
+    d.rounded_rectangle([m, 0, m + bw, bh], radius=28, fill=WHITE, outline=INK, width=6)
+    y = pad - 6
+    for ln in lines:
+        d.text((m + pad, y), ln, font=f, fill=INK)
+        y += 46
+    # 名前タグ
+    nf = font(FONT_BOLD, 24)
+    name = SPEAKERS[speaker]["name"]
+    nw = d.textlength(name, font=nf)
+    nx = m + 40 if left else m + bw - nw - 40
+    d.rounded_rectangle([nx - 16, -16, nx + nw + 16, 22], radius=14,
+                        fill=SPEAKERS[speaker]["body"], outline=INK, width=4)
+    d.text((nx, -12), name, font=nf, fill=WHITE)
+    return img, bh
+
+
+# ---------------------------------------------------------------------------
+# 本体
+# ---------------------------------------------------------------------------
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("outdir", nargs="?", default="build")
+    ap.add_argument("--engine", choices=["auto", "voicevox", "openjtalk"], default="auto")
+    args = ap.parse_args()
+
+    out = Path(args.outdir)
     audio_dir = out / "audio"
-    frames_dir.mkdir(parents=True, exist_ok=True)
     audio_dir.mkdir(parents=True, exist_ok=True)
 
-    concat_lines = []
-    wav_parts = []  # (path, trailing_pause_sec)
-    idx = 0
-    total = 0.0
+    engine = args.engine
+    if engine == "auto":
+        engine = "voicevox" if voicevox_available() else "openjtalk"
+    print(f"[engine] {engine}")
+    if engine == "openjtalk":
+        print("  ※VOICEVOXエンジン未検出のためOpen JTalkで仮生成します。")
+        print("    Mac側でVOICEVOXアプリを起動してから実行すると、ずんだもん等の声になります。")
+
+    # --- 音声生成 ---------------------------------------------------------
+    timeline = []      # (scene_idx, line, duration, envelope)
+    all_audio = []
+    rate = None
     for si, scene in enumerate(SCENES):
-        base = render_slide(scene["slide"])
         for li, line in enumerate(scene["lines"]):
-            wav = audio_dir / f"line_{idx:03d}.wav"
-            dur = tts(line.get("tts", line["text"]), wav)
-            png = frames_dir / f"line_{idx:03d}.png"
-            add_subtitle(base, line["text"]).save(png)
+            idx = len(timeline)
+            wav = audio_dir / f"l{idx:03d}.wav"
+            spec = SPEAKERS[line["sp"]]
+            text = line.get("tts", line["text"])
+            if engine == "voicevox":
+                tts_voicevox(text, spec["voicevox"], wav)
+            else:
+                tts_openjtalk(text, spec["ojt"], wav)
+            samples, rate = read_wav(wav)
             pause = SCENE_PAUSE if li == len(scene["lines"]) - 1 else LINE_PAUSE
-            wav_parts.append((wav, pause))
-            concat_lines.append(f"file '{png}'\nduration {dur + pause:.3f}")
-            total += dur + pause
-            idx += 1
-        print(f"scene {si + 1}/{len(SCENES)} done (elapsed video: {total/60:.1f} min)")
+            dur = len(samples) / rate + pause
+            timeline.append({"scene": si, "line": line, "dur": dur,
+                             "env": mouth_envelope(samples, rate, dur, FPS)})
+            all_audio.append(samples)
+            all_audio.append(np.zeros(int(pause * rate), dtype=np.float32))
+        print(f"  tts scene {si + 1}/{len(SCENES)}")
 
-    # 音声を1本に結合(行間に無音を挿入)
     narration = out / "narration.wav"
-    with wave.open(str(wav_parts[0][0])) as w0:
-        params = w0.getparams()
-    with wave.open(str(narration), "wb") as wout:
-        wout.setparams(params)
-        for wav, pause in wav_parts:
-            with wave.open(str(wav)) as win:
-                wout.writeframes(win.readframes(win.getnframes()))
-            wout.writeframes(b"\x00" * int(pause * params.framerate) * params.sampwidth)
+    merged = np.concatenate(all_audio)
+    peak = np.abs(merged).max() or 1.0
+    merged = (merged / peak * 0.89 * 32767).astype(np.int16)
+    with wave.open(str(narration), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(merged.tobytes())
 
-    concat_file = out / "frames.txt"
-    last_png = frames_dir / f"line_{idx - 1:03d}.png"
-    concat_file.write_text("\n".join(concat_lines) + f"\nfile '{last_png}'\n", encoding="utf-8")
+    total = sum(t["dur"] for t in timeline)
+    print(f"[audio] {total/60:.2f} min / {len(timeline)} lines")
 
+    # --- 映像生成(ffmpegへ直接パイプ) -----------------------------------
+    chars = build_char_cache()
     mp4 = out / "sample_video.mp4"
-    subprocess.run(
-        ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file),
-         "-i", str(narration), "-c:v", "libx264", "-preset", "medium", "-crf", "26",
-         "-r", "10", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k",
-         "-shortest", str(mp4)],
-        check=True, capture_output=True,
-    )
+    proc = subprocess.Popen(
+        ["ffmpeg", "-y", "-v", "error",
+         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
+         "-i", str(narration),
+         "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+         "-c:a", "aac", "-b:a", "128k", "-shortest", str(mp4)],
+        stdin=subprocess.PIPE)
+
+    bg_cache, cur_scene, scene_t = None, -1, 0.0
+    for ti, item in enumerate(timeline):
+        scene = SCENES[item["scene"]]
+        if item["scene"] != cur_scene:
+            cur_scene = item["scene"]
+            bg_cache = scene_background(scene)
+            scene_t = 0.0
+        bubble, bub_h = render_bubble(item["line"]["text"], item["line"]["sp"])
+        speaker = item["line"]["sp"]
+        n_frames = max(1, int(round(item["dur"] * FPS)))
+        for fi in range(n_frames):
+            t = fi / FPS
+            frame = bg_cache.copy()
+            draw_visual_anim(frame, scene, scene_t + t)
+            # キャラ(話者は揺れ+口パク、聞き手はトーンダウン)
+            for key in ("labo", "mei"):
+                talking = key == speaker
+                m = int(round(item["env"][min(fi, len(item["env"]) - 1)] * 3)) if talking else 0
+                blink = (int((scene_t + t) * 1000) % 3400) < 130
+                bob = int(math.sin((scene_t + t) * 7.5) * 5) if talking else 0
+                sprite = chars[(key, not talking, blink, m)]
+                frame.paste(sprite, (CHAR_X[SPEAKERS[key]["side"]], CHAR_Y + bob), sprite)
+            # 吹き出し(登場時にポップイン)
+            pop = min(1.0, t / 0.16)
+            scale = 0.86 + 0.18 * pop - 0.04 * max(0.0, math.sin(pop * math.pi))
+            bx = BUBBLE_LEFT[SPEAKERS[speaker]["side"]] - BUBBLE_M
+            by = BUBBLE_BOTTOM - bub_h
+            if scale < 0.999:
+                b = bubble.resize((int(bubble.width * scale), int(bubble.height * scale)),
+                                  Image.BILINEAR)
+                # 本体の下端を固定したまま縮小(ポップイン時の位置ブレ防止)
+                bx += int((bubble.width - b.width) * (0.5 if SPEAKERS[speaker]["side"] == "left" else 0.5))
+                by += int(bub_h - bub_h * scale)
+            else:
+                b = bubble
+            frame.paste(b, (bx, by), b)
+            proc.stdin.write(frame.tobytes())
+        scene_t += item["dur"]
+        if (ti + 1) % 20 == 0:
+            print(f"  video {ti + 1}/{len(timeline)} lines")
+
+    proc.stdin.close()
+    proc.wait()
     render_thumbnail(out / "thumbnail.png")
-    print(f"total length: {total/60:.2f} min -> {mp4}")
+    print(f"[done] {total/60:.2f} min -> {mp4}")
+
+
+def render_thumbnail(path):
+    img = Image.new("RGB", (W, H), CREAM)
+    d = ImageDraw.Draw(img)
+    draw_burst(d, 700, 300, n=30, r0=120, r1=1100, color=(255, 226, 168))
+    d.rounded_rectangle([-20, -20, W + 20, H + 20], radius=10, outline=INK, width=14)
+    outlined_text(d, (58, 40), "時間術の本 30冊をAI分析", font(FONT_BOLD, 50), PINK, WHITE, 6)
+    outlined_text(d, (58, 130), "共通点は", font(FONT_BOLD, 92), INK, WHITE, 8)
+    outlined_text(d, (58, 240), "3つだけ", font(FONT_BOLD, 150), PINK, WHITE, 10)
+    outlined_text(d, (58, 410), "だった", font(FONT_BOLD, 92), INK, WHITE, 8)
+    d.rounded_rectangle([52, 540, 720, 646], radius=24, fill=SKY, outline=INK, width=7)
+    outlined_text(d, (80, 558), "「早起き」は入ってない", font(FONT_BOLD, 54), WHITE, INK, 4)
+    for key, x in (("labo", 900), ("mei", 1120)):
+        sp = draw_character(key, 0.7, False, False)
+        sp = sp.resize((330, 330), Image.LANCZOS)
+        img.paste(sp, (x, 380), sp)
+    d.text((W - 40, 30), f"{CHANNEL} #01", font=font(FONT_BOLD, 30), fill=INK, anchor="ra")
+    img.save(path)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "build")
+    main()
