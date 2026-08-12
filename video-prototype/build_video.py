@@ -847,6 +847,7 @@ def draw_visual_anim(img, scene, t):
 
 BUBBLE_W, BUBBLE_M = 720, 140    # 吹き出し本体の幅 / しっぽ用の左右マージン
 BUBBLE_BOTTOM = 612              # 吹き出し本体の下端の画面Y
+BUBBLE_TOP_PAD = 22              # 名前タグが本体上端からはみ出す分の余白
 BUBBLE_LEFT = {"left": 258, "right": 262}   # 話者別の本体左端X(顔を隠さない位置)
 CHAR_X = {"left": -40, "right": 980}        # キャラ立ち位置(300pxスプライトの左上X)
 CHAR_Y = 428
@@ -859,32 +860,34 @@ def render_bubble(text, speaker):
     tmp = ImageDraw.Draw(Image.new("RGB", (10, 10)))
     lines = wrap(tmp, text, f, bw - pad * 2)
     bh = pad * 2 + 46 * len(lines)
-    img = Image.new("RGBA", (bw + m * 2, bh + 70), (0, 0, 0, 0))
+    top = BUBBLE_TOP_PAD          # 名前タグが本体からはみ出す分(切れないように確保)
+    img = Image.new("RGBA", (bw + m * 2, top + bh + 70), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     left = SPEAKERS[speaker]["side"] == "left"
     # しっぽ(先に描いて本体で根元を隠す)
+    by = top + bh
     if left:
-        tail = [(m + 30, bh - 20), (m + 110, bh - 20), (m - 74, bh + 48)]
+        tail = [(m + 30, by - 20), (m + 110, by - 20), (m - 74, by + 48)]
     else:
-        tail = [(m + bw - 110, bh - 20), (m + bw - 30, bh - 20), (m + bw + 74, bh + 48)]
+        tail = [(m + bw - 110, by - 20), (m + bw - 30, by - 20), (m + bw + 74, by + 48)]
     d.polygon(tail, fill=WHITE)
     d.line([tail[0], tail[2]], fill=INK, width=6)
     d.line([tail[1], tail[2]], fill=INK, width=6)
     # 本体
-    d.rounded_rectangle([m, 0, m + bw, bh], radius=28, fill=WHITE, outline=INK, width=6)
-    y = pad - 6
+    d.rounded_rectangle([m, top, m + bw, by], radius=28, fill=WHITE, outline=INK, width=6)
+    y = top + pad - 6
     for ln in lines:
         d.text((m + pad, y), ln, font=f, fill=INK)
         y += 46
-    # 名前タグ
+    # 名前タグ(本体の上端にまたがる)
     nf = font(FONT_BOLD, 24)
     name = SPEAKERS[speaker]["name"]
     nw = d.textlength(name, font=nf)
     nx = m + 40 if left else m + bw - nw - 40
     tag = tuple(int(c * 0.62) for c in SPEAKERS[speaker]["body"])   # 白文字が読める濃さに
-    d.rounded_rectangle([nx - 16, -16, nx + nw + 16, 22], radius=14,
+    d.rounded_rectangle([nx - 16, top - 20, nx + nw + 16, top + 20], radius=15,
                         fill=tag, outline=INK, width=4)
-    d.text((nx, -12), name, font=nf, fill=WHITE)
+    d.text((nx, top - 16), name, font=nf, fill=WHITE)
     return img, bh
 
 
@@ -982,7 +985,7 @@ def main():
             pop = min(1.0, t / 0.16)
             scale = 0.86 + 0.18 * pop - 0.04 * max(0.0, math.sin(pop * math.pi))
             bx = BUBBLE_LEFT[SPEAKERS[speaker]["side"]] - BUBBLE_M
-            by = BUBBLE_BOTTOM - bub_h
+            by = BUBBLE_BOTTOM - bub_h - BUBBLE_TOP_PAD
             if scale < 0.999:
                 b = bubble.resize((int(bubble.width * scale), int(bubble.height * scale)),
                                   Image.BILINEAR)
