@@ -45,8 +45,32 @@ W, H = 1280, 720
 FPS = 15
 CHANNEL = "AI実践読書ラボ"
 WATERMARK = "仮動画サンプル / 数値はダミー"
-FONT_BOLD = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
-FONT_REG = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+
+
+
+def _pick_font(candidates):
+    """環境にある日本語フォントを順に探す(macOS / Linux 両対応)."""
+    for path in candidates:
+        if Path(path).exists():
+            return path
+    raise SystemExit(
+        "日本語フォントが見つかりません。build_video.py の FONT_BOLD / FONT_REG に\n"
+        "手元のフォントのパスを指定してください。候補として探した場所:\n  "
+        + "\n  ".join(candidates))
+
+
+FONT_BOLD = _pick_font([
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",          # Linux
+    "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc",                 # macOS
+    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    "/Library/Fonts/NotoSansCJKjp-Bold.otf",
+])
+FONT_REG = _pick_font([
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    "/Library/Fonts/NotoSansCJKjp-Regular.otf",
+])
 VOICEVOX_URL = "http://127.0.0.1:50021"
 OJT_DIC = "/var/lib/mecab/dic/open-jtalk/naist-jdic"
 OJT_VOICE = "/usr/share/hts-voice/nitech-jp-atr503-m001/nitech_jp_atr503_m001.htsvoice"
