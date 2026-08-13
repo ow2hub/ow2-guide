@@ -174,6 +174,7 @@ python3 aggregate.py
 |---|---|
 | `python3: command not found` | `brew install python3` |
 | `books.csv がありません` | STEP 1 をやる。`analysis` フォルダにいるか確認 |
+| CSVが崩れている気がする | `python3 check_books.py` で場所を特定 |
 | `books/b05.md がありません` | STEP 2 のコピーコマンドをやり直す |
 | `JSONを読み取れませんでした` | そのバッチだけAIに投げ直す。返答をまるごと貼り直せばOK |
 | 主張が変な感じに割れる | STEP 4 の名寄せをやる |
