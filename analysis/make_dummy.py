@@ -52,7 +52,7 @@ TIER_D = ["予定表に「やらないこと」を書く", "疲れていると�
 def main():
     if OUT.exists():
         shutil.rmtree(OUT)
-    (OUT / "extracted").mkdir(parents=True)
+    (OUT / "responses").mkdir(parents=True)
 
     # 書誌リスト
     rows = [["id", "title", "author", "year", "origin"]]
@@ -73,17 +73,21 @@ def main():
     for k, claim in enumerate(TIER_D):
         per_book[f"b{k % N_BOOKS + 1:02d}"].append(claim)
 
-    # 3回分の抽出結果を書き出す
+    # 本番と同じ形式(10冊ずつのバッチ × 3回)で AI の返答を模擬する
     #   本命の主張 → 3回すべてに入れる(2回以上一致なので採用される)
     #   ノイズ     → 1回だけ入れる(採用されない = フィルタが効くことの確認)
-    for bid, claims in per_book.items():
+    ids = sorted(per_book)
+    batches = [ids[i:i + 10] for i in range(0, len(ids), 10)]
+    for bi, batch in enumerate(batches, 1):
         for run in (1, 2, 3):
-            out = list(claims)
-            if run == 2:
-                out.append(f"{bid}のノイズ主張")
-            (OUT / "extracted" / f"{bid}_run{run}.json").write_text(
-                json.dumps({"book_id": bid, "claims": out}, ensure_ascii=False),
-                encoding="utf-8")
+            payload = []
+            for bid in batch:
+                out = list(per_book[bid])
+                if run == 2:
+                    out.append(f"{bid}のノイズ主張")
+                payload.append({"book_id": bid, "claims": out})
+            body = "```json\n" + json.dumps(payload, ensure_ascii=False, indent=2) + "\n```"
+            (OUT / "responses" / f"batch{bi}_run{run}.txt").write_text(body, encoding="utf-8")
 
     total = sum(len(v) for v in per_book.values())
     unique = len(TIER_A) + len(TIER_B) + len(TIER_C) + len(TIER_D)

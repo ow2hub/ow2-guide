@@ -30,15 +30,16 @@ MIN_AGREEMENT = 2      # 3回の実行のうち何回以上一致したら採用
 
 # 対象ディレクトリ(--dir で変更可能)。既定はこのスクリプトのある場所。
 BASE = Path(__file__).resolve().parent
-BOOKS_CSV = EXTRACTED = CANONICAL = None
+BOOKS_CSV = EXTRACTED = RESPONSES = CANONICAL = None
 
 
 def set_base(path):
     """入出力先のディレクトリを決める."""
-    global BASE, BOOKS_CSV, EXTRACTED, CANONICAL
+    global BASE, BOOKS_CSV, EXTRACTED, RESPONSES, CANONICAL
     BASE = Path(path).resolve()
     BOOKS_CSV = BASE / "books.csv"
     EXTRACTED = BASE / "extracted"
+    RESPONSES = BASE / "responses"
     CANONICAL = BASE / "canonical.json"
 
 
@@ -59,29 +60,80 @@ def normalize(text):
     return t
 
 
+def extract_json_objects(text):
+    """AIの返答から {"book_id":..., "claims":[...]} を取り出す(多少の崩れは許容)."""
+    fenced = re.findall(r"```(?:json)?\s*(.*?)```", text, re.S)
+    for cand in fenced + [text]:
+        try:
+            data = json.loads(cand.strip())
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if isinstance(data, list):
+            return [d for d in data if isinstance(d, dict)]
+        if isinstance(data, dict):
+            return [data]
+    # 最後の手段: book_id を含む { } を1つずつ拾う
+    found = []
+    for m in re.finditer(r'\{[^{}]*"book_id"[^{}]*\}', text, re.S):
+        try:
+            found.append(json.loads(m.group(0)))
+        except json.JSONDecodeError:
+            pass
+    return found
+
+
+def collect_runs():
+    """book_id -> {実行回: 主張の集合} を集める.
+
+    responses/batch*_run*.txt  (make_prompts.py を使う通常の流れ)
+    extracted/<id>_run<N>.json (1冊ずつ手で作る旧形式)
+    のどちらでも読める。
+    """
+    runs = defaultdict(lambda: defaultdict(set))
+    files = []
+    if RESPONSES.exists():
+        files += sorted(RESPONSES.glob("*.txt")) + sorted(RESPONSES.glob("*.json"))
+    if EXTRACTED.exists():
+        files += sorted(EXTRACTED.glob("*.json"))
+    if not files:
+        sys.exit(f"{RESPONSES}/ にも {EXTRACTED}/ にも答えがありません。\n"
+                 "make_prompts.py で作ったプロンプトをAIに投げ、\n"
+                 "その返答を responses/batch1_run1.txt のように保存してください。")
+    for path in files:
+        m = re.search(r"run(\d+)", path.stem)
+        run = int(m.group(1)) if m else 1
+        text = path.read_text(encoding="utf-8")
+        objs = extract_json_objects(text)
+        if not objs:
+            print(f"  [警告] {path.name} からJSONを読み取れませんでした。飛ばします。")
+            continue
+        for obj in objs:
+            bid = obj.get("book_id")
+            if not bid:
+                continue
+            claims = {normalize(c) for c in obj.get("claims", []) if normalize(c)}
+            runs[bid][run] |= claims
+    return runs
+
+
 def load_extractions(books):
     """本ごとに、MIN_AGREEMENT 回以上出現した主張だけを採用して返す."""
-    if not EXTRACTED.exists():
-        sys.exit(f"{EXTRACTED}/ がありません。抽出結果のJSONを置いてください。")
+    runs = collect_runs()
     adopted, stats = {}, {}
     for book in books:
         bid = book["id"]
-        runs = sorted(EXTRACTED.glob(f"{bid}_run*.json"))
-        if not runs:
-            print(f"  [警告] {bid} の抽出結果が見つかりません。スキップします。")
+        per_run = runs.get(bid)
+        if not per_run:
+            print(f"  [警告] {bid}({book['title']})の抽出結果が見つかりません。スキップします。")
             continue
         counter = Counter()
-        for path in runs:
-            try:
-                data = json.loads(path.read_text(encoding="utf-8"))
-            except json.JSONDecodeError as e:
-                sys.exit(f"{path} が壊れています: {e}")
-            claims = {normalize(c) for c in data.get("claims", []) if normalize(c)}
+        for claims in per_run.values():
             counter.update(claims)
-        need = MIN_AGREEMENT if len(runs) >= MIN_AGREEMENT else 1
+        n_runs = len(per_run)
+        need = min(MIN_AGREEMENT, n_runs)
         kept = sorted(c for c, n in counter.items() if n >= need)
         adopted[bid] = kept
-        stats[bid] = {"runs": len(runs), "raw": len(counter), "kept": len(kept)}
+        stats[bid] = {"runs": n_runs, "raw": len(counter), "kept": len(kept)}
     if not adopted:
         sys.exit("採用できた抽出結果が1件もありません。")
     return adopted, stats

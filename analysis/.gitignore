@@ -2,7 +2,10 @@
 books/*.md
 !books/_template.md
 extracted/
+responses/
+prompts_out/
 canonical.json
+claims.txt
 report.md
 video_numbers.py
 dummy/
