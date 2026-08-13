@@ -184,7 +184,7 @@ def main():
     # 和書/洋書の傾向
     origin_books = defaultdict(set)
     for bid in merged:
-        origin_books[by_id[bid].get("origin", "不明")].add(bid)
+        origin_books[(by_id[bid].get("origin") or "").strip() or "不明"].add(bid)
 
     # ---- report.md -------------------------------------------------------
     out = ["# 30冊横断分析レポート", "",
