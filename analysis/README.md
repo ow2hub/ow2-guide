@@ -83,7 +83,8 @@ b02,...
 
 ```bash
 cd analysis
-python3 aggregate.py
+python3 aggregate.py            # analysis/ 直下のデータを集計
+python3 aggregate.py --dir path # 別ディレクトリを集計
 ```
 
 出力:
@@ -95,6 +96,23 @@ python3 aggregate.py
 
 `video_numbers.py` の中身を見ながら `build_video.py` の `SCENES` の数字と
 `script.md` の記述を差し替え、ダミー表記の透かし(`WATERMARK`)を空にします。
+
+---
+
+## 先にパイプラインを試す(ダミーデータ)
+
+実際の30冊を集める前に、一連の流れを空回ししておくと安心です。
+
+```bash
+python3 make_dummy.py            # dummy/ にダミーの書誌と抽出結果を生成
+python3 aggregate.py --dir dummy # 集計してレポートを出力
+```
+
+このダミーは、仮動画 `video-prototype/` で使っている数値と一致するように作ってあります。
+つまり**動画の数字は、この集計器を通して矛盾がないことを確認済み**です
+(延べ251個 → 41種類 → 20冊以上は3種類 → 1冊限定19個 の内訳が破綻しない)。
+
+生成される `dummy/report.md` を見ると、実データのときにどんな出力が得られるかがわかります。
 
 ---
 

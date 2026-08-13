@@ -26,11 +26,20 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-BASE = Path(__file__).resolve().parent
-BOOKS_CSV = BASE / "books.csv"
-EXTRACTED = BASE / "extracted"
-CANONICAL = BASE / "canonical.json"
 MIN_AGREEMENT = 2      # 3回の実行のうち何回以上一致したら採用するか
+
+# 対象ディレクトリ(--dir で変更可能)。既定はこのスクリプトのある場所。
+BASE = Path(__file__).resolve().parent
+BOOKS_CSV = EXTRACTED = CANONICAL = None
+
+
+def set_base(path):
+    """入出力先のディレクトリを決める."""
+    global BASE, BOOKS_CSV, EXTRACTED, CANONICAL
+    BASE = Path(path).resolve()
+    BOOKS_CSV = BASE / "books.csv"
+    EXTRACTED = BASE / "extracted"
+    CANONICAL = BASE / "canonical.json"
 
 
 def load_books():
@@ -92,8 +101,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list-claims", action="store_true",
                     help="名寄せプロンプトに貼る主張一覧を出力して終了")
+    ap.add_argument("--dir", default=None,
+                    help="books.csv と extracted/ があるディレクトリ(既定: このスクリプトの場所)")
     args = ap.parse_args()
 
+    set_base(args.dir or Path(__file__).resolve().parent)
     books = load_books()
     by_id = {b["id"]: b for b in books}
     adopted, stats = load_extractions(books)

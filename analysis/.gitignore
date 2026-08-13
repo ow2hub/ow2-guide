@@ -1,7 +1,8 @@
-# 実データは各自の作業物なのでコミットしない
+# 実データ・生成物は各自の作業物なのでコミットしない
 books/*.md
 !books/_template.md
 extracted/
 canonical.json
 report.md
 video_numbers.py
+dummy/
