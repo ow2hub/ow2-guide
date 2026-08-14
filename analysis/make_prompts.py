@@ -12,6 +12,7 @@ books.csv と books/*.md を読んで、10冊ずつまとめたプロンプト�
 
 import argparse
 import csv
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -80,7 +81,9 @@ def main():
     for bi, batch in enumerate(batches, 1):
         body = []
         for b in batch:
-            text = (BOOKS_DIR / f"{b['id']}.md").read_text(encoding="utf-8").strip()
+            text = (BOOKS_DIR / f"{b['id']}.md").read_text(encoding="utf-8")
+            # 雛形の注意書き(HTMLコメント)はAIに渡す必要がないので除去
+            text = re.sub(r"<!--.*?-->", "", text, flags=re.S).strip()
             body.append(f"\n--- book_id: {b['id']} / 書名: {b['title']} ---\n{text}\n")
         prompt = HEADER.format(n=len(batch)) + "".join(body)
         for run in range(1, RUNS + 1):
