@@ -6,6 +6,7 @@ STEP 2 の作業(1冊ずつのコピペ)に入る前に、リストが壊れて�
     python3 check_books.py
 """
 
+import argparse
 import csv
 import re
 import sys
@@ -14,10 +15,34 @@ from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
 BOOKS_CSV = BASE / "books.csv"
+BOOKS_DIR = BASE / "books"
 VALID_ORIGIN = {"和書", "洋書", ""}
 
 
+def init_book_files(rows):
+    """books.csv に書かれたidぶんだけ、入力用ファイルを作る(既存は上書きしない)."""
+    template = (BOOKS_DIR / "_template.md").read_text(encoding="utf-8")
+    created = []
+    for r in rows:
+        bid = (r.get("id") or "").strip()
+        path = BOOKS_DIR / f"{bid}.md"
+        if bid and not path.exists():
+            path.write_text(template, encoding="utf-8")
+            created.append(path.name)
+    if created:
+        print(f"\n入力用ファイルを {len(created)}個 作りました: books/")
+    else:
+        print("\n入力用ファイルはすべて揃っています(既存のものは触っていません)。")
+    print("1つずつ開いて、Amazonの内容紹介と目次を貼り付けてください:")
+    print(f"  open -e books/{(rows[0].get('id') or 'b01').strip()}.md")
+
+
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--init", action="store_true",
+                    help="books.csv のidぶん、books/ に入力用ファイルを作る")
+    args = ap.parse_args()
+
     if not BOOKS_CSV.exists():
         sys.exit("books.csv がありません。books.sample.csv をコピーして作ってください。")
 
@@ -65,8 +90,9 @@ def main():
     print(f"{len(rows)}冊 読み込みました。")
     print("  " + " / ".join(f"{k} {v}冊" for k, v in sorted(counts.items())))
 
-    if len(rows) != 30:
-        notes.append(f"30冊の想定ですが {len(rows)}冊 です(意図的なら問題ありません)。")
+    if len(rows) < 10:
+        notes.append(f"{len(rows)}冊 です。少なすぎると共通点が出にくくなります"
+                     "(10冊以上を推奨)。")
     if counts.get("未設定"):
         notes.append(f"originが未設定の本が {counts['未設定']}冊 あります"
                      "(空欄でも集計は通ります)。")
@@ -80,8 +106,11 @@ def main():
             print(f"  - {p}")
         sys.exit(1)
 
-    print("\n書式は問題ありません。STEP 2 に進めます:")
-    print("  for i in $(seq -w 1 30); do cp books/_template.md books/b$i.md; done")
+    if args.init:
+        init_book_files(rows)
+    else:
+        print("\n書式は問題ありません。次は入力用ファイルを作ります:")
+        print("  python3 check_books.py --init")
 
 
 if __name__ == "__main__":
