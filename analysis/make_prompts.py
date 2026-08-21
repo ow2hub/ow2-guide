@@ -50,13 +50,29 @@ HEADER = """あなたは書籍のメタデータから、その本が読者に�
 """
 
 
+def extract_intro(text):
+    """「## 紹介文・帯のコピー」の中身だけを取り出す(目次は使わない)."""
+    sections, cur = {}, "_head"
+    for line in text.splitlines():
+        m = re.match(r"^##\s+(.+)", line)
+        if m:
+            cur = m.group(1).strip()
+            sections.setdefault(cur, [])
+        else:
+            sections.setdefault(cur, []).append(line)
+    intro = "\n".join(sections.get("紹介文・帯のコピー", [])).strip()
+    return f"## 紹介文・帯のコピー\n{intro}" if intro else "(紹介文なし)"
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--batch-size", type=int, default=BATCH_SIZE,
-                    help=f"1回のプロンプトに入れる冊数(既定 {BATCH_SIZE})。"
+    ap.add_argument("--batch-size", type=int, default=None,
+                    help=f"1回のプロンプトに入れる冊数(既定 {BATCH_SIZE}、"
+                         "--intro-only のときは全冊まとめて1回)。"
                          "「長すぎる」と怒られたら 5 にする")
+    ap.add_argument("--intro-only", action="store_true",
+                    help="紹介文だけを使う(目次のある本とない本が混ざっていても公平に比較できる)")
     args = ap.parse_args()
-    batch_size = max(1, args.batch_size)
 
     if not BOOKS_CSV.exists():
         sys.exit(f"{BOOKS_CSV} がありません。\n"
@@ -72,10 +88,22 @@ def main():
                  + "\n  ".join(f"books/{m}.md" for m in missing)
                  + "\n\nbooks/_template.md をコピーして作ってください。")
 
+    # 紹介文だけなら短いので全冊まとめて1回で投げられる
+    if args.batch_size is None:
+        batch_size = len(books) if args.intro_only else BATCH_SIZE
+    else:
+        batch_size = max(1, args.batch_size)
+
     if OUT_DIR.exists():
         shutil.rmtree(OUT_DIR)
     OUT_DIR.mkdir()
-    (BASE / "responses").mkdir(exist_ok=True)
+    responses = BASE / "responses"
+    responses.mkdir(exist_ok=True)
+    stale = list(responses.glob("*.txt")) + list(responses.glob("*.json"))
+    if stale:
+        print(f"[注意] responses/ に古い答えが {len(stale)}個 残っています。")
+        print("       条件を変えて作り直した場合は、先に古いものを消してください:")
+        print("         rm responses/*.txt\n")
 
     batches = [books[i:i + batch_size] for i in range(0, len(books), batch_size)]
     for bi, batch in enumerate(batches, 1):
@@ -84,6 +112,8 @@ def main():
             text = (BOOKS_DIR / f"{b['id']}.md").read_text(encoding="utf-8")
             # 雛形の注意書き(HTMLコメント)はAIに渡す必要がないので除去
             text = re.sub(r"<!--.*?-->", "", text, flags=re.S).strip()
+            if args.intro_only:
+                text = extract_intro(text)
             body.append(f"\n--- book_id: {b['id']} / 書名: {b['title']} ---\n{text}\n")
         prompt = HEADER.format(n=len(batch)) + "".join(body)
         for run in range(1, RUNS + 1):
