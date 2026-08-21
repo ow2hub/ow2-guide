@@ -116,9 +116,24 @@ def collect_runs():
     return runs
 
 
+def load_canonical():
+    """名寄せ表を読む。無ければ空の表を返す."""
+    if not CANONICAL.exists():
+        print("  [注意] canonical.json がないため、名寄せなしで集計します。")
+        return {}
+    table = json.loads(CANONICAL.read_text(encoding="utf-8"))
+    return {normalize(k): normalize(v) for k, v in table.items()}
+
+
 def load_extractions(books):
-    """本ごとに、MIN_AGREEMENT 回以上出現した主張だけを採用して返す."""
+    """本ごとに、MIN_AGREEMENT 回以上出現した主張だけを採用して返す.
+
+    名寄せは「一致を数える前」に適用する。実行ごとに言い回しが変わっても
+    同じ主張として数えられるようにするため(後から名寄せすると、表現ゆれの
+    せいで一致回数が足りず、正しい主張まで捨ててしまう)。
+    """
     runs = collect_runs()
+    table = load_canonical()
     adopted, stats = {}, {}
     for book in books:
         bid = book["id"]
@@ -126,27 +141,18 @@ def load_extractions(books):
         if not per_run:
             print(f"  [警告] {bid}({book['title']})の抽出結果が見つかりません。スキップします。")
             continue
-        counter = Counter()
+        counter, raw = Counter(), set()
         for claims in per_run.values():
-            counter.update(claims)
+            raw |= claims
+            counter.update({table.get(c, c) for c in claims})
         n_runs = len(per_run)
         need = min(MIN_AGREEMENT, n_runs)
         kept = sorted(c for c, n in counter.items() if n >= need)
         adopted[bid] = kept
-        stats[bid] = {"runs": n_runs, "raw": len(counter), "kept": len(kept)}
+        stats[bid] = {"runs": n_runs, "raw": len(raw), "kept": len(kept)}
     if not adopted:
         sys.exit("採用できた抽出結果が1件もありません。")
     return adopted, stats
-
-
-def apply_canonical(adopted):
-    if not CANONICAL.exists():
-        print("  [注意] canonical.json がないため、名寄せなしで集計します。")
-        return adopted
-    table = json.loads(CANONICAL.read_text(encoding="utf-8"))
-    table = {normalize(k): normalize(v) for k, v in table.items()}
-    return {bid: sorted({table.get(c, c) for c in claims})
-            for bid, claims in adopted.items()}
 
 
 def main():
@@ -160,16 +166,18 @@ def main():
     set_base(args.dir or Path(__file__).resolve().parent)
     books = load_books()
     by_id = {b["id"]: b for b in books}
-    adopted, stats = load_extractions(books)
 
     if args.list_claims:
-        every = sorted({c for claims in adopted.values() for c in claims})
+        # 名寄せ表を作るため、採用前の生の主張をすべて出す
+        every = sorted({c for per_run in collect_runs().values()
+                        for claims in per_run.values() for c in claims})
         print("\n".join(f"- {c}" for c in every))
         print(f"\n({len(every)}件)", file=sys.stderr)
         return
 
+    adopted, stats = load_extractions(books)
     raw_total = sum(len(v) for v in adopted.values())
-    merged = apply_canonical(adopted)
+    merged = adopted
 
     # 主張 -> 登場した本のid
     appears = defaultdict(set)
