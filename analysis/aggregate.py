@@ -102,10 +102,20 @@ def collect_runs():
     for path in files:
         m = re.search(r"run(\d+)", path.stem)
         run = int(m.group(1)) if m else 1
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8", errors="replace")
         objs = extract_json_objects(text)
         if not objs:
-            print(f"  [警告] {path.name} からJSONを読み取れませんでした。飛ばします。")
+            if not text.strip():
+                why = "ファイルが空です。AIの返答を貼って保存してください"
+            elif text.lstrip().startswith(("{\\rtf", "{\\*\\")):
+                why = ("リッチテキスト(RTF)で保存されています。テキストエディットの\n"
+                       "         「フォーマット → 標準テキストにする」(⇧⌘T)をしてから\n"
+                       "         貼り直すか、pbpaste > このファイル で保存してください")
+            elif "book_id" not in text:
+                why = "book_id が見当たりません。返答が途中で切れていないか確認してください"
+            else:
+                why = "JSONの形が崩れているようです。返答をもう一度まるごと貼り直してください"
+            print(f"  [警告] {path.name}: {why}")
             continue
         for obj in objs:
             bid = obj.get("book_id")
