@@ -19,6 +19,67 @@ BOOKS_DIR = BASE / "books"
 VALID_ORIGIN = {"和書", "洋書", ""}
 
 
+def parse_sections(text):
+    """Markdownを「## 見出し」単位に分解する."""
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    sections, cur = {}, "_head"
+    for line in text.splitlines():
+        m = re.match(r"^##\s+(.+)", line)
+        if m:
+            cur = m.group(1).strip()
+            sections.setdefault(cur, [])
+        else:
+            sections.setdefault(cur, []).append(line)
+    return {k: "\n".join(v).strip() for k, v in sections.items()}
+
+
+def report_content(rows):
+    """各書籍の入力状況を一覧にする(これを見せてもらえば中身の確認ができる)."""
+    tpl_path = BOOKS_DIR / "_template.md"
+    tpl = parse_sections(tpl_path.read_text(encoding="utf-8")) if tpl_path.exists() else {}
+
+    print("\n書籍データの状態:")
+    done, empty, missing, thin = 0, [], [], []
+    for r in rows:
+        bid = (r.get("id") or "").strip()
+        path = BOOKS_DIR / f"{bid}.md"
+        if not path.exists():
+            missing.append(bid)
+            print(f"  {bid}  ファイルがありません")
+            continue
+        sec = parse_sections(path.read_text(encoding="utf-8"))
+        toc = sec.get("目次", "")
+        intro = sec.get("紹介文・帯のコピー", "")
+        # 雛形の文言のままなら未記入とみなす
+        if toc == tpl.get("目次", ""):
+            toc = ""
+        if intro == tpl.get("紹介文・帯のコピー", ""):
+            intro = ""
+        toc_lines = len([l for l in toc.splitlines() if l.strip()])
+        chars = len(toc) + len(intro)
+        flag = ""
+        if chars < 20:
+            empty.append(bid)
+            flag = "  ← 中身が入っていません"
+        elif toc_lines < 3:
+            thin.append(bid)
+            flag = "  ← 目次が薄い(紹介文だけでも進められます)"
+        else:
+            done += 1
+        print(f"  {bid}  目次{toc_lines:3d}行  {chars:5d}字{flag}")
+
+    print(f"\n合計 {len(rows)}冊 / 十分 {done}冊 / 目次少なめ {len(thin)}冊 "
+          f"/ 未記入 {len(empty)}冊 / ファイルなし {len(missing)}冊")
+    if empty or missing:
+        print("未記入のものを埋めてから STEP 3 に進んでください:")
+        for bid in (missing + empty)[:5]:
+            print(f"  open -e books/{bid}.md")
+        return False
+    print("\nすべて揃っています。次に進めます:")
+    print("  python3 make_prompts.py")
+    return True
+
+
 def init_book_files(rows):
     """books.csv に書かれたidぶんだけ、入力用ファイルを作る(既存は上書きしない)."""
     template = (BOOKS_DIR / "_template.md").read_text(encoding="utf-8")
@@ -108,6 +169,8 @@ def main():
 
     if args.init:
         init_book_files(rows)
+    elif any((BOOKS_DIR / f"{(r.get('id') or '').strip()}.md").exists() for r in rows):
+        report_content(rows)
     else:
         print("\n書式は問題ありません。次は入力用ファイルを作ります:")
         print("  python3 check_books.py --init")
