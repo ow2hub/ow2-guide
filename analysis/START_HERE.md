@@ -104,26 +104,48 @@ python3 check_books.py
 python3 make_prompts.py
 ```
 
-`prompts_out/` に **9個** のファイルができます(10冊 × 3バッチ × 3回)。
+`prompts_out/` にプロンプトができます(冊数とバッチサイズで個数が決まります)。
 
-この9個を、1つずつAIに投げます。
+紹介文だけで分析する場合は、全冊まとめて1回で投げられます:
 
-1. `prompts_out/batch1_run1.txt` を開いて、**中身を全部コピー**
-   ```bash
-   open -e prompts_out/batch1_run1.txt
-   ```
-2. **ChatGPT か Claude で「新しいチャット」を開いて**、貼り付けて送信
-3. 返ってきた答えを**全部コピー**して、`responses/batch1_run1.txt` に保存
-   ```bash
-   open -e responses/batch1_run1.txt   # ファイルがなければ新規作成して保存
-   ```
-4. これを `batch1_run2`, `batch1_run3`, `batch2_run1` … と9個ぶん繰り返す
+```bash
+python3 make_prompts.py --intro-only
+```
 
-> **毎回「新しいチャット」で実行してください。** 同じ会話の中で3回聞くと、
+できたプロンプトを、1つずつAIに投げます。**エディタは使いません。**
+
+### 1. プロンプトをクリップボードにコピー
+
+```bash
+pbcopy < prompts_out/batch1_run1.txt
+```
+
+これでコピー済みです。ファイルを開く必要はありません。
+
+### 2. ChatGPT か Claude の「新しいチャット」に ⌘V で貼って送信
+
+### 3. 返答の「コピー」ボタンを押す
+
+### 4. クリップボードをファイルに保存
+
+```bash
+pbpaste > responses/batch1_run1.txt
+```
+
+ファイルが無くても、このコマンドが作ってくれます。
+
+### 5. 残りも同じように繰り返す
+
+`batch1_run2`, `batch1_run3`, … とファイル名を変えるだけです。
+
+> **毎回「新しいチャット」で実行してください。** 同じ会話の中で繰り返すと、
 > AIが前の答えを見て同じことを言うので、ブレを測る意味がなくなります。
 >
 > 答えの保存は、JSONの部分だけ抜き出さなくて大丈夫です。
 > AIの返答をまるごと貼り付ければ、こちらで読み取ります。
+
+> **`open -e` は存在しないファイルを開けません。** 新規作成したいときは
+> 上の `pbpaste >` を使うか、先に `touch responses/batch1_run1.txt` してください。
 
 ---
 
