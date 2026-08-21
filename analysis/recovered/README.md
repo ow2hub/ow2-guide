@@ -6,12 +6,15 @@ run1 の返答をここに保存してある。あわせて、その内容をも
 使い方:
 
 ```bash
-cp recovered/batch1_run1.txt responses/
+cp recovered/batch1_run1.txt recovered/batch1_run2.txt responses/
 cp recovered/canonical.json .
 python3 aggregate.py
 ```
 
-canonical.json の内訳(グループ分けの根拠):
+2回ぶんの抽出結果があるので、「両方に出た主張だけ採用」という本来の基準で集計される。
+1回だけしか出なかった主張(実行するたびに変わる不安定なもの)は自動的に落ちる。
+
+canonical.json の内訳(2回ぶんの言い回しを統合。61表現 → 11グループ):
 
 | まとめた名前 | 元の表現 |
 |---|---|
