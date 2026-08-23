@@ -148,8 +148,8 @@ python3 build_video.py ./build
 ## 本番投稿前チェックリスト
 
 - [x] 数値を実測値にした(`analysis/` で集計済み)
-- [ ] **VOICEVOXを起動して音声を差し替えた**(現状はOpen JTalkの仮ナレーション)
-- [ ] 差し替え後、`WATERMARK` を空文字にした
+- [x] **VOICEVOXを起動して音声を差し替えた**
+- [x] 差し替え後、`WATERMARK` を空文字にした
 - [ ] 分析した15冊のリストを概要欄用に用意した
 - [ ] チャプター時刻をVOICEVOX版の実尺で測り直した
 - [ ] VOICEVOXのクレジットを概要欄に記載した

@@ -47,7 +47,7 @@ from PIL import Image, ImageDraw, ImageFont
 W, H = 1280, 720
 FPS = 15
 CHANNEL = "AI実践読書ラボ"
-WATERMARK = "音声は仮ナレーション(本番はVOICEVOX)"
+WATERMARK = ""          # 仮ビルド中の注記。公開版は空にしておく
 
 
 
@@ -717,7 +717,8 @@ def scene_background(scene):
         d.text((W - 44 - tw - 20, 24), chip, font=f, fill=WHITE)
     # メインカード
     d.rounded_rectangle([56, 108, W - 56, 372], radius=30, fill=WHITE, outline=INK, width=6)
-    d.text((640, 382), f"{CHANNEL} / {WATERMARK}", font=font(FONT_REG, 17),
+    footer = f"{CHANNEL} / {WATERMARK}" if WATERMARK else CHANNEL
+    d.text((640, 382), footer, font=font(FONT_REG, 17),
            fill=(170, 160, 145), anchor="ma")
     # 種類別の静止部分
     if vis["type"] == "bullets":
