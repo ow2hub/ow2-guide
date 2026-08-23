@@ -95,7 +95,12 @@ python3 build_video.py ./build
 # 必要パッケージ: brew install ffmpeg / pip3 install pillow numpy
 ```
 
-出力: `build/sample_video.mp4` / `build/thumbnail.png` / `build/narration.wav`
+出力: `build/sample_video.mp4` / `build/thumbnail.png` / `build/narration.wav` /
+`build/chapters.txt`(概要欄に貼るチャプター)
+
+チャプターは音声の実測長から自動生成されるので、手で測る必要はない。
+話者や台本を変えて尺が変わっても、ビルドし直せば自動で追従する。
+区切り位置は `SCENES` の `chapter` キーで決まる。
 
 ---
 
@@ -151,7 +156,7 @@ python3 build_video.py ./build
 - [x] **VOICEVOXを起動して音声を差し替えた**
 - [x] 差し替え後、`WATERMARK` を空文字にした
 - [ ] 分析した15冊のリストを概要欄用に用意した
-- [ ] チャプター時刻をVOICEVOX版の実尺で測り直した
+- [ ] `build/chapters.txt` の中身を概要欄に貼った(自動生成されるので測り直し不要)
 - [ ] VOICEVOXのクレジットを概要欄に記載した
 - [ ] YouTube Studio のAI・合成コンテンツ開示設定をONにした
 - [ ] サムネ3案を作り、YouTubeのサムネイルテストに登録した

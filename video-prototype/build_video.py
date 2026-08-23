@@ -119,6 +119,7 @@ SCENE_PAUSE = 0.8
 SCENES = [
     # ---- OP フック ---------------------------------------------------------
     {
+        "chapter": "15冊の紹介文を分析した結果",
         "chip": "OP",
         "visual": {"type": "stat", "kicker": "今回の検証", "num": "15", "unit": "冊",
                    "label": "時間術の本のAmazon紹介文だけを分析"},
@@ -147,6 +148,7 @@ SCENES = [
     },
     # ---- 予告 --------------------------------------------------------------
     {
+        "chapter": "この動画でわかること",
         "chip": "予告",
         "visual": {"type": "bullets", "kicker": "この動画でわかること",
                    "title": "紹介文の分析でわかった3つ",
@@ -167,6 +169,7 @@ SCENES = [
     },
     # ---- 検証方法 ----------------------------------------------------------
     {
+        "chapter": "どうやって集めたか",
         "chip": "検証方法",
         "visual": {"type": "bullets", "kicker": "どうやって選んだか",
                    "title": "選書に主観を入れない",
@@ -256,6 +259,7 @@ SCENES = [
     },
     # ---- POINT 1 -----------------------------------------------------------
     {
+        "chapter": "共通点ランキング",
         "chip": "POINT 1/3",
         "visual": {"type": "bars", "kicker": "POINT 1 — 共通点ランキング",
                    "title": "15冊中、何冊が言っていたか",
@@ -312,6 +316,7 @@ SCENES = [
     },
     # ---- POINT 2(核心) ----------------------------------------------------
     {
+        "chapter": "なぜ共通点が無いのか",
         "chip": "POINT 2/3",
         "impact": True,
         "visual": {"type": "bullets", "kicker": "POINT 2 — なぜ共通点が無いのか",
@@ -362,6 +367,7 @@ SCENES = [
     },
     # ---- POINT 3(決定打) --------------------------------------------------
     {
+        "chapter": "目次を足したら12個出てきた",
         "chip": "POINT 3/3",
         "impact": True,
         "visual": {"type": "stat", "kicker": "同じ本を「目次つき」で分析し直したら",
@@ -414,6 +420,7 @@ SCENES = [
     },
     # ---- 結論 --------------------------------------------------------------
     {
+        "chapter": "結論:紹介文で本を選ぶな",
         "chip": "結論",
         "impact": True,
         "visual": {"type": "bullets", "kicker": "今回の結論",
@@ -431,6 +438,7 @@ SCENES = [
         ],
     },
     {
+        "chapter": "今日からできること",
         "chip": "今日からできること",
         "visual": {"type": "bullets", "kicker": "買う前に目次を見る方法",
                    "title": "3分で確認できます",
@@ -449,6 +457,7 @@ SCENES = [
     },
     # ---- 限界の開示 --------------------------------------------------------
     {
+        "chapter": "この分析の限界",
         "chip": "正直な話",
         "visual": {"type": "bullets", "kicker": "この分析の限界",
                    "title": "数字は「目安」として見てほしい",
@@ -468,6 +477,7 @@ SCENES = [
     },
     # ---- まとめ + 次回 -----------------------------------------------------
     {
+        "chapter": "まとめ",
         "chip": "まとめ",
         "visual": {"type": "bullets", "kicker": "今日のまとめ",
                    "title": "15冊分析の結論",
@@ -487,6 +497,7 @@ SCENES = [
         ],
     },
     {
+        "chapter": "次回予告",
         "chip": "次回予告",
         "visual": {"type": "bullets", "kicker": "次回予告",
                    "title": "次は15冊ぜんぶの目次で同じ分析",
@@ -858,9 +869,13 @@ def main():
 
     # --- 音声生成 ---------------------------------------------------------
     timeline = []      # (scene_idx, line, duration, envelope)
+    chapters = []      # (開始秒, 見出し) — YouTubeの概要欄にそのまま貼れる形で出す
+    elapsed = 0.0
     all_audio = []
     rate = None
     for si, scene in enumerate(SCENES):
+        if "chapter" in scene:
+            chapters.append((elapsed, scene["chapter"]))
         for li, line in enumerate(scene["lines"]):
             idx = len(timeline)
             wav = audio_dir / f"l{idx:03d}.wav"
@@ -875,6 +890,7 @@ def main():
             dur = len(samples) / rate + pause
             timeline.append({"scene": si, "line": line, "dur": dur,
                              "env": mouth_envelope(samples, rate, dur, FPS)})
+            elapsed += dur
             all_audio.append(samples)
             all_audio.append(np.zeros(int(pause * rate), dtype=np.float32))
         print(f"  tts scene {si + 1}/{len(SCENES)}")
@@ -891,6 +907,14 @@ def main():
 
     total = sum(t["dur"] for t in timeline)
     print(f"[audio] {total/60:.2f} min / {len(timeline)} lines")
+
+    # チャプターは音声の長さで決まるので、この時点で確定できる
+    if chapters:
+        lines_out = [f"{int(t) // 60:02d}:{int(t) % 60:02d} {name}" for t, name in chapters]
+        (out / "chapters.txt").write_text("\n".join(lines_out) + "\n", encoding="utf-8")
+        print(f"[chapters] {len(chapters)}章 -> {out / 'chapters.txt'}")
+        for l in lines_out:
+            print(f"    {l}")
 
     # --- 映像生成(ffmpegへ直接パイプ) -----------------------------------
     chars = build_char_cache()
