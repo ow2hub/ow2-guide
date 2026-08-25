@@ -64,12 +64,22 @@ def split_sections(text):
     return out
 
 
+MIN_TOC_LINES = 3       # これ未満は「目次が入っていない」とみなす
+
+
 def current_toc(path, template_toc):
+    """books/bNN.md に入っている目次を返す(雛形の文言のままなら空とみなす)."""
     for name, body in split_sections(path.read_text(encoding="utf-8")):
         if name == SECTION:
             body = body.strip()
             return "" if body == template_toc else body
     return ""
+
+
+def has_real_toc(path, template_toc):
+    """中身のある目次が既に入っているか(1〜2行しか無いものは未入力扱い)."""
+    toc = current_toc(path, template_toc)
+    return len([l for l in toc.splitlines() if l.strip()]) >= MIN_TOC_LINES
 
 
 def write_toc(path, toc):
@@ -94,16 +104,20 @@ def write_toc(path, toc):
     path.write_text(text, encoding="utf-8")
 
 
-def do_init(books, template_toc):
+def do_init(books, template_toc, include_all=False):
     have = []
     blocks = [GUIDE]
     for b in books:
         bid = b["id"].strip()
         path = BOOKS_DIR / f"{bid}.md"
-        if path.exists() and current_toc(path, template_toc):
+        if not include_all and path.exists() and has_real_toc(path, template_toc):
             have.append(bid)
             continue
         blocks.append(f"\n=== {bid} / {b.get('title', '').strip()} ===\n\n")
+    if len(blocks) == 1:
+        sys.exit("全部の本に目次が入っているので、貼るものがありません。\n"
+                 "それでも貼り直したいときは:\n"
+                 "  python3 paste_tocs.py --init --all")
     if TOCS.exists():
         # 作り直すと貼った内容が消えるので、既にあるならそのまま使ってもらう
         print(f"{TOCS.name} はすでにあります。そのまま続きを貼ってください:")
@@ -180,6 +194,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--init", action="store_true", help="tocs.md(貼り付けシート)を作る")
     ap.add_argument("--force", action="store_true", help="既に目次がある本も上書きする")
+    ap.add_argument("--all", action="store_true",
+                    help="--init のとき、目次が入っている本も貼り付けシートに出す")
     args = ap.parse_args()
 
     books = load_books()
@@ -191,7 +207,7 @@ def main():
                 template_toc = body.strip()
 
     if args.init:
-        do_init(books, template_toc)
+        do_init(books, template_toc, args.all)
     else:
         do_apply(books, template_toc, args.force)
 
