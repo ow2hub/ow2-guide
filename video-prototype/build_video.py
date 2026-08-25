@@ -756,6 +756,28 @@ def scene_background(scene):
         d.text((640, 140), vis["label"], font=font(FONT_BOLD, 32), fill=(120, 118, 130), anchor="ma")
     elif vis["type"] == "bars":
         d.text((92, 128), vis["title"], font=font(FONT_BOLD, 40), fill=INK)
+    elif vis["type"] == "rank":
+        # 順位バッジ
+        d.rounded_rectangle([92, 138, 252, 298], radius=34, fill=YELLOW, outline=INK, width=6)
+        rtxt, rf, uf = str(vis["rank"]), font(FONT_BOLD, 92), font(FONT_BOLD, 34)
+        rw = d.textlength(rtxt, font=rf)
+        uw = d.textlength("位", font=uf)
+        x = 172 - (rw + uw + 6) / 2
+        outlined_text(d, (x, 152), rtxt, rf, PINK, INK, 5)
+        d.text((x + rw + 6, 216), "位", font=uf, fill=INK)
+        # 主張(長ければ字を縮めて2行に収める)
+        size = 54
+        while True:
+            f = font(FONT_BOLD, size)
+            lines = wrap(d, vis["claim"], f, 760)
+            if len(lines) <= 2 or size <= 30:
+                break
+            size -= 4
+        lines = lines[:2]
+        y = 150 if len(lines) > 1 else 178
+        for ln in lines:
+            d.text((288, y), ln, font=f, fill=INK)
+            y += size + 12
     return img
 
 
@@ -798,6 +820,16 @@ def draw_visual_anim(img, scene, t):
             d.text((1100, y + (barh - fsize) // 2), f"{int(round(val * p))}/{total}",
                    font=font(FONT_BOLD, fsize), fill=INK)
             y += lh
+    elif vis["type"] == "rank":
+        total = vis["total"]
+        bx0, bx1, by, barh = 288, 1050, 306, 36
+        d.rounded_rectangle([bx0, by, bx1, by + barh], radius=barh // 2, fill=(238, 234, 226))
+        wpx = int((bx1 - bx0) * (vis["val"] / total) * p)
+        if wpx > barh:
+            d.rounded_rectangle([bx0, by, bx0 + wpx, by + barh], radius=barh // 2,
+                                fill=SKY, outline=INK, width=4)
+        d.text((1070, by + 1), f"{int(round(vis['val'] * p))}/{total}",
+               font=font(FONT_BOLD, 30), fill=INK)
 
 
 BUBBLE_W, BUBBLE_M = 720, 140    # 吹き出し本体の幅 / しっぽ用の左右マージン
