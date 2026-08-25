@@ -108,8 +108,8 @@ SPEAKERS = {
     },
 }
 
-LINE_PAUSE = 0.34
-SCENE_PAUSE = 0.8
+LINE_PAUSE = 0.40       # セリフ間の空白(秒)
+SCENE_PAUSE = 0.9       # シーンの切れ目はさらに長く取る
 
 # ---------------------------------------------------------------------------
 # 台本
@@ -532,7 +532,7 @@ def tts_voicevox(text, speaker_id, out_wav, base=VOICEVOX_URL):
     req = urllib.request.Request(f"{base}/audio_query?{q}", method="POST")
     with urllib.request.urlopen(req, timeout=30) as r:
         query = json.load(r)
-    query["speedScale"] = 1.05
+    query["speedScale"] = 1.0    # 数字の多い動画なので、速めず聞き取りやすさを優先
     query["prePhonemeLength"] = 0.05
     query["postPhonemeLength"] = 0.1
     body = json.dumps(query).encode()
