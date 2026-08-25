@@ -651,12 +651,12 @@ def draw_character(key, mouth, blink, dim):
         d.polygon([(cx - 44, 190), (cx, 232), (cx + 44, 190)], fill=WHITE, outline=INK)
     # 頭
     d.ellipse([cx - 84, 40, cx + 84, 208], fill=skin, outline=INK, width=6)
-    # 前髪
+    # 前髪(chordは弦の部分にも輪郭線を引いてしまうので、髪色で塗り消す)
+    d.chord([cx - 84, 40, cx + 84, 208], 180, 360, fill=hair, outline=INK, width=6)
+    d.line([(cx - 80, 124), (cx + 80, 124)], fill=hair, width=10)
     if style == "twin":     # ぱっつん
-        d.chord([cx - 84, 40, cx + 84, 208], 180, 360, fill=hair, outline=INK, width=6)
-        d.rectangle([cx - 78, 106, cx + 78, 118], fill=hair)
+        d.rectangle([cx - 78, 106, cx + 78, 124], fill=hair)
     else:                   # 斜め分け
-        d.chord([cx - 84, 40, cx + 84, 208], 180, 360, fill=hair, outline=INK, width=6)
         d.ellipse([cx - 90, 62, cx - 10, 132], fill=hair, outline=INK, width=6)
     # 目
     for ex in (cx - 36, cx + 36):
