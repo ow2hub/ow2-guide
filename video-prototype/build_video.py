@@ -45,6 +45,7 @@ from PIL import Image, ImageDraw, ImageFont
 # 基本設定
 # ---------------------------------------------------------------------------
 W, H = 1280, 720
+SHORT_W, SHORT_H = 1080, 1920      # Shorts(縦型)の書き出しサイズ
 FPS = 15
 CHANNEL = "本のデータ研究所"
 WATERMARK = ""          # 仮ビルド中の注記。公開版は空にしておく
@@ -515,6 +516,16 @@ SCENES = [
     },
 ]
 
+# Shorts(縦型)の切り出し。数字は SCENES の位置(0始まり)
+SHORTS = [
+    {"title": "共通点ゼロ", "scenes": [0, 1],
+     "hook": "時間術の本 15冊\n共通点は ゼロ", "cta": "続きは本編で"},
+    {"title": "1個 vs 12個", "scenes": [14, 16],
+     "hook": "同じ本なのに\n紹介文は 1個\n目次は 12個", "cta": "紹介文で本を選ぶな"},
+    {"title": "目次の見方", "scenes": [17, 18],
+     "hook": "本を買う前に\n目次を3分見る", "cta": "今日からできます"},
+]
+
 
 # ---------------------------------------------------------------------------
 # 音声合成
@@ -879,38 +890,17 @@ def render_bubble(text, speaker):
 
 
 # ---------------------------------------------------------------------------
-# 本体
+# 音声・フレームの生成(本編とShortsで共用)
 # ---------------------------------------------------------------------------
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("outdir", nargs="?", default="build")
-    ap.add_argument("--engine", choices=["auto", "voicevox", "openjtalk"], default="auto")
-    args = ap.parse_args()
-
-    out = Path(args.outdir)
-    audio_dir = out / "audio"
-    audio_dir.mkdir(parents=True, exist_ok=True)
-
-    engine = args.engine
-    if engine == "auto":
-        engine = "voicevox" if voicevox_available() else "openjtalk"
-    print(f"[engine] {engine}")
-    if engine == "openjtalk":
-        print("  ※VOICEVOXエンジン未検出のためOpen JTalkで仮生成します。")
-        print("    Mac側でVOICEVOXアプリを起動してから実行すると、ずんだもん等の声になります。")
-
-    # --- 音声生成 ---------------------------------------------------------
-    timeline = []      # (scene_idx, line, duration, envelope)
-    chapters = []      # (開始秒, 見出し) — YouTubeの概要欄にそのまま貼れる形で出す
-    elapsed = 0.0
-    all_audio = []
-    rate = None
-    for si, scene in enumerate(SCENES):
+def synthesize(scenes, audio_dir, engine, narration, quiet=False):
+    """台本を読み上げてwavにまとめ、(タイムライン, チャプター, 合計秒)を返す."""
+    timeline, chapters, all_audio = [], [], []
+    elapsed, rate = 0.0, None
+    for si, scene in enumerate(scenes):
         if "chapter" in scene:
             chapters.append((elapsed, scene["chapter"]))
         for li, line in enumerate(scene["lines"]):
-            idx = len(timeline)
-            wav = audio_dir / f"l{idx:03d}.wav"
+            wav = audio_dir / f"l{len(timeline):03d}.wav"
             spec = SPEAKERS[line["sp"]]
             text = line.get("tts", line["text"])
             if engine == "voicevox":
@@ -925,9 +915,9 @@ def main():
             elapsed += dur
             all_audio.append(samples)
             all_audio.append(np.zeros(int(pause * rate), dtype=np.float32))
-        print(f"  tts scene {si + 1}/{len(SCENES)}")
+        if not quiet:
+            print(f"  tts scene {si + 1}/{len(scenes)}")
 
-    narration = out / "narration.wav"
     merged = np.concatenate(all_audio)
     peak = np.abs(merged).max() or 1.0
     merged = (merged / peak * 0.89 * 32767).astype(np.int16)
@@ -936,8 +926,159 @@ def main():
         w.setsampwidth(2)
         w.setframerate(rate)
         w.writeframes(merged.tobytes())
+    return timeline, chapters, elapsed
 
-    total = sum(t["dur"] for t in timeline)
+
+def compose_frame(scene, item, fi, t, scene_t, chars, bg_cache, bubble, bub_h):
+    """横型(1280x720)のフレームを1枚組み立てる."""
+    speaker = item["line"]["sp"]
+    frame = bg_cache.copy()
+    draw_visual_anim(frame, scene, scene_t + t)
+    # キャラ(話者は揺れ+口パク、聞き手はトーンダウン)
+    for key in SPEAKERS:
+        talking = key == speaker
+        m = int(round(item["env"][min(fi, len(item["env"]) - 1)] * 3)) if talking else 0
+        blink = (int((scene_t + t) * 1000) % 3400) < 130
+        bob = int(math.sin((scene_t + t) * 7.5) * 5) if talking else 0
+        sprite = chars[(key, not talking, blink, m)]
+        frame.paste(sprite, (CHAR_X[SPEAKERS[key]["side"]], CHAR_Y + bob), sprite)
+    # 吹き出し(登場時にポップイン)
+    pop = min(1.0, t / 0.16)
+    scale = 0.86 + 0.18 * pop - 0.04 * max(0.0, math.sin(pop * math.pi))
+    bx = BUBBLE_LEFT[SPEAKERS[speaker]["side"]] - BUBBLE_M
+    by = BUBBLE_BOTTOM - bub_h - BUBBLE_TOP_PAD
+    if scale < 0.999:
+        b = bubble.resize((int(bubble.width * scale), int(bubble.height * scale)),
+                          Image.BILINEAR)
+        # 本体の下端を固定したまま縮小(ポップイン時の位置ブレ防止)
+        bx += int((bubble.width - b.width) * 0.5)
+        by += int(bub_h - bub_h * scale)
+    else:
+        b = bubble
+    frame.paste(b, (bx, by), b)
+    return frame
+
+
+def open_encoder(size, narration, mp4):
+    w, h = size
+    return subprocess.Popen(
+        ["ffmpeg", "-y", "-v", "error",
+         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", str(FPS), "-i", "-",
+         "-i", str(narration),
+         "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+         "-c:a", "aac", "-b:a", "128k", "-shortest", str(mp4)],
+        stdin=subprocess.PIPE)
+
+
+# ---------------------------------------------------------------------------
+# 本体
+# ---------------------------------------------------------------------------
+def render_video(scenes, timeline, chars, narration, mp4, vertical=None):
+    """タイムラインどおりに動画を書き出す。vertical を渡すと縦型で包む."""
+    size = (SHORT_W, SHORT_H) if vertical else (W, H)
+    proc = open_encoder(size, narration, mp4)
+    bg_cache, cur_scene, scene_t = None, -1, 0.0
+    for item in timeline:
+        scene = scenes[item["scene"]]
+        if item["scene"] != cur_scene:
+            cur_scene = item["scene"]
+            bg_cache = scene_background(scene)
+            scene_t = 0.0
+        bubble, bub_h = render_bubble(item["line"]["text"], item["line"]["sp"])
+        for fi in range(max(1, int(round(item["dur"] * FPS)))):
+            frame = compose_frame(scene, item, fi, fi / FPS, scene_t,
+                                  chars, bg_cache, bubble, bub_h)
+            if vertical:
+                frame = wrap_vertical(frame, vertical)
+            proc.stdin.write(frame.tobytes())
+        scene_t += item["dur"]
+    proc.stdin.close()
+    proc.wait()
+
+
+def shorts_backdrop(short):
+    """Shortsの固定部分(上のフック文と下のCTA)を1枚作る."""
+    img = Image.new("RGB", (SHORT_W, SHORT_H), CREAM)
+    d = ImageDraw.Draw(img)
+    for y in range(0, SHORT_H, 44):
+        for x in range(0, SHORT_W, 44):
+            d.ellipse([x, y, x + 7, y + 7], fill=(240, 232, 214))
+    # 上: フック(1行ずつ収まるところまで縮める)
+    d.rounded_rectangle([44, 96, SHORT_W - 44, 470], radius=40, fill=YELLOW,
+                        outline=INK, width=8)
+    hook = short["hook"].split("\n")
+    size = 84
+    while size > 40 and any(d.textlength(l, font=font(FONT_BOLD, size)) > SHORT_W - 160
+                            for l in hook):
+        size -= 4
+    f = font(FONT_BOLD, size)
+    y = 283 - (len(hook) * (size + 18) - 18) // 2
+    for ln in hook:
+        outlined_text(d, (SHORT_W // 2, y), ln, f, INK, WHITE, 5, anchor="ma")
+        y += size + 18
+    # 下: CTA
+    # 下端はShortsのUI(タイトル・ボタン)に隠れるので、1500より下には置かない
+    d.rounded_rectangle([44, 1288, SHORT_W - 44, 1468], radius=40, fill=PINK,
+                        outline=INK, width=8)
+    d.text((SHORT_W // 2, 1338), short["cta"], font=font(FONT_BOLD, 62),
+           fill=WHITE, anchor="ma")
+    d.text((SHORT_W // 2, 1496), CHANNEL, font=font(FONT_BOLD, 42),
+           fill=(150, 142, 128), anchor="ma")
+    return img
+
+
+def wrap_vertical(frame, backdrop):
+    """横型フレームを縮小して、Shortsの背景の真ん中に貼る."""
+    img = backdrop.copy()
+    fh = round(SHORT_W * H / W)
+    img.paste(frame.resize((SHORT_W, fh), Image.BILINEAR), (0, 556))
+    return img
+
+
+def build_shorts(out, engine, chars):
+    """本編から切り出した縦型ショートを書き出す."""
+    for si, short in enumerate(SHORTS, 1):
+        scenes = [SCENES[i] for i in short["scenes"]]
+        audio_dir = out / f"audio_short{si}"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        narration = out / f"short{si}.wav"
+        timeline, _, total = synthesize(scenes, audio_dir, engine, narration, quiet=True)
+        mp4 = out / f"short{si}.mp4"
+        render_video(scenes, timeline, chars, narration, mp4,
+                     vertical=shorts_backdrop(short))
+        print(f"[short {si}] {total:.0f}秒 / {short['title']} -> {mp4}")
+        if total > 175:
+            print("    ※3分を超えるとShortsになりません。シーンを減らしてください。")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("outdir", nargs="?", default="build")
+    ap.add_argument("--engine", choices=["auto", "voicevox", "openjtalk"], default="auto")
+    ap.add_argument("--shorts", action="store_true",
+                    help="本編を作らず、縦型ショート3本だけを書き出す")
+    args = ap.parse_args()
+
+    out = Path(args.outdir)
+    audio_dir = out / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+
+    engine = args.engine
+    if engine == "auto":
+        engine = "voicevox" if voicevox_available() else "openjtalk"
+    print(f"[engine] {engine}")
+    if engine == "openjtalk":
+        print("  ※VOICEVOXエンジン未検出のためOpen JTalkで仮生成します。")
+        print("    Mac側でVOICEVOXアプリを起動してから実行すると、ずんだもん等の声になります。")
+
+    chars = build_char_cache()
+
+    if args.shorts:
+        build_shorts(out, engine, chars)
+        return
+
+    narration = out / "narration.wav"
+    timeline, chapters, total = synthesize(SCENES, audio_dir, engine, narration)
     print(f"[audio] {total/60:.2f} min / {len(timeline)} lines")
 
     # チャプターは音声の長さで決まるので、この時点で確定できる
@@ -948,60 +1089,8 @@ def main():
         for l in lines_out:
             print(f"    {l}")
 
-    # --- 映像生成(ffmpegへ直接パイプ) -----------------------------------
-    chars = build_char_cache()
     mp4 = out / "sample_video.mp4"
-    proc = subprocess.Popen(
-        ["ffmpeg", "-y", "-v", "error",
-         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-         "-i", str(narration),
-         "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
-         "-c:a", "aac", "-b:a", "128k", "-shortest", str(mp4)],
-        stdin=subprocess.PIPE)
-
-    bg_cache, cur_scene, scene_t = None, -1, 0.0
-    for ti, item in enumerate(timeline):
-        scene = SCENES[item["scene"]]
-        if item["scene"] != cur_scene:
-            cur_scene = item["scene"]
-            bg_cache = scene_background(scene)
-            scene_t = 0.0
-        bubble, bub_h = render_bubble(item["line"]["text"], item["line"]["sp"])
-        speaker = item["line"]["sp"]
-        n_frames = max(1, int(round(item["dur"] * FPS)))
-        for fi in range(n_frames):
-            t = fi / FPS
-            frame = bg_cache.copy()
-            draw_visual_anim(frame, scene, scene_t + t)
-            # キャラ(話者は揺れ+口パク、聞き手はトーンダウン)
-            for key in SPEAKERS:
-                talking = key == speaker
-                m = int(round(item["env"][min(fi, len(item["env"]) - 1)] * 3)) if talking else 0
-                blink = (int((scene_t + t) * 1000) % 3400) < 130
-                bob = int(math.sin((scene_t + t) * 7.5) * 5) if talking else 0
-                sprite = chars[(key, not talking, blink, m)]
-                frame.paste(sprite, (CHAR_X[SPEAKERS[key]["side"]], CHAR_Y + bob), sprite)
-            # 吹き出し(登場時にポップイン)
-            pop = min(1.0, t / 0.16)
-            scale = 0.86 + 0.18 * pop - 0.04 * max(0.0, math.sin(pop * math.pi))
-            bx = BUBBLE_LEFT[SPEAKERS[speaker]["side"]] - BUBBLE_M
-            by = BUBBLE_BOTTOM - bub_h - BUBBLE_TOP_PAD
-            if scale < 0.999:
-                b = bubble.resize((int(bubble.width * scale), int(bubble.height * scale)),
-                                  Image.BILINEAR)
-                # 本体の下端を固定したまま縮小(ポップイン時の位置ブレ防止)
-                bx += int((bubble.width - b.width) * (0.5 if SPEAKERS[speaker]["side"] == "left" else 0.5))
-                by += int(bub_h - bub_h * scale)
-            else:
-                b = bubble
-            frame.paste(b, (bx, by), b)
-            proc.stdin.write(frame.tobytes())
-        scene_t += item["dur"]
-        if (ti + 1) % 20 == 0:
-            print(f"  video {ti + 1}/{len(timeline)} lines")
-
-    proc.stdin.close()
-    proc.wait()
+    render_video(SCENES, timeline, chars, narration, mp4)
     render_thumbnail(out / "thumbnail.png")
     print(f"[done] {total/60:.2f} min -> {mp4}")
 
