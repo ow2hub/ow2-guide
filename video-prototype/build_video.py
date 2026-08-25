@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """仮動画ビルダー v2 — 漫画風ポップアニメ + キャラ掛け合い + VOICEVOX対応.
 
-「AI実践読書ラボ」第1回:
+「本のデータ研究所」第1回:
   『時間術の本15冊の「Amazon紹介文」を分析したら、共通点がゼロだった』
 
   数値は実データ(analysis/ で集計した結果)。集計手順は analysis/START_HERE.md、
@@ -46,7 +46,7 @@ from PIL import Image, ImageDraw, ImageFont
 # ---------------------------------------------------------------------------
 W, H = 1280, 720
 FPS = 15
-CHANNEL = "AI実践読書ラボ"
+CHANNEL = "本のデータ研究所"
 WATERMARK = ""          # 仮ビルド中の注記。公開版は空にしておく
 
 
@@ -985,7 +985,8 @@ def render_thumbnail(path):
     outlined_text(d, (58, 412), "だった", font(FONT_BOLD, 92), INK, WHITE, 8)
     d.rounded_rectangle([52, 540, 780, 646], radius=24, fill=SKY, outline=INK, width=7)
     outlined_text(d, (80, 558), "紹介文で本を選ぶな", font(FONT_BOLD, 54), WHITE, INK, 4)
-    for key, x in (("noa", 890), ("mei", 1120)):
+    # スプライトは左右に余白を含むので、右端で切れないよう内側に寄せる
+    for key, x in (("noa", 770), ("mei", 975)):
         sp = draw_character(key, 0.7, False, False)
         sp = sp.resize((330, 330), Image.LANCZOS)
         img.paste(sp, (x, 380), sp)
