@@ -105,9 +105,12 @@ def do_init(books, template_toc):
             continue
         blocks.append(f"\n=== {bid} / {b.get('title', '').strip()} ===\n\n")
     if TOCS.exists():
-        sys.exit(f"{TOCS.name} がすでにあります。中身を流し込むなら:\n"
-                 "  python3 paste_tocs.py\n"
-                 f"作り直すなら先に消してください: rm {TOCS.name}")
+        # 作り直すと貼った内容が消えるので、既にあるならそのまま使ってもらう
+        print(f"{TOCS.name} はすでにあります。そのまま続きを貼ってください:")
+        print(f"  open -e {TOCS.name}")
+        print("貼り終わったら流し込みます:")
+        print("  python3 paste_tocs.py")
+        return
     TOCS.write_text("".join(blocks), encoding="utf-8")
     todo = len(blocks) - 1
     print(f"{TOCS.name} を作りました({todo}冊ぶんの見出し)。")
