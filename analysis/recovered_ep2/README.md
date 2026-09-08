@@ -8,6 +8,7 @@
 ```bash
 cd ~/ow2-guide/analysis
 cp recovered_ep2/*.txt responses/
+cp recovered_ep2/canonical.json .
 python3 aggregate.py
 ```
 
@@ -16,3 +17,6 @@ python3 aggregate.py
 | ファイル | 内容 |
 |---|---|
 | batch1_run1.txt | b01〜b10 / 1回目 / 延べ99主張 |
+
+| canonical.json | 名寄せ表(179表現→124種類)。`analysis/` 直下にコピーして使う |
+| canonical_notes.md | どれをまとめ、どれを分けたかの理由 |
