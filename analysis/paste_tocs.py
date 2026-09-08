@@ -165,8 +165,9 @@ def do_apply(books, template_toc, force):
         if not toc:
             empty.append(bid)
             continue
-        if current_toc(path, template_toc) and not force:
-            kept.append(bid)
+        if has_real_toc(path, template_toc) and not force:
+            have = len([l for l in current_toc(path, template_toc).splitlines() if l.strip()])
+            kept.append(f"{bid}({have}行)")
             continue
         write_toc(path, toc)
         wrote.append((bid, len([l for l in toc.splitlines() if l.strip()])))
