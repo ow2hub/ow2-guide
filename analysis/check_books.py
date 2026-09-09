@@ -80,6 +80,32 @@ def report_content(rows):
     return True
 
 
+def renumber(path, rows):
+    """idを b01 から順に振り直す(本を足し引きしたあとに使う)."""
+    existing = sorted(BOOKS_DIR.glob("b*.md")) if BOOKS_DIR.exists() else []
+    if existing:
+        sys.exit(f"books/ に {len(existing)}個 のファイルが残っています。\n"
+                 "先に前の回を退避してください:\n"
+                 "  python3 new_round.py --archive <名前>")
+    changed = []
+    for i, r in enumerate(rows, 1):
+        new_id = f"b{i:02d}"
+        if (r.get("id") or "").strip() != new_id:
+            changed.append(f"{r.get('id')} -> {new_id}")
+        r["id"] = new_id
+    if not changed:
+        print("idはすでに連番です。直すところはありません。")
+        return
+    cols = ["id", "title", "author", "year", "origin"]
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    print(f"idを振り直しました({len(changed)}件):")
+    for c in changed:
+        print(f"  {c}")
+
+
 def init_book_files(rows):
     """books.csv に書かれたidぶんだけ、入力用ファイルを作る(既存は上書きしない)."""
     template = (BOOKS_DIR / "_template.md").read_text(encoding="utf-8")
@@ -102,6 +128,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--init", action="store_true",
                     help="books.csv のidぶん、books/ に入力用ファイルを作る")
+    ap.add_argument("--renumber", action="store_true",
+                    help="idを b01 から順に振り直す(本を足し引きしたあとに使う)")
     args = ap.parse_args()
 
     if not BOOKS_CSV.exists():
@@ -122,6 +150,10 @@ def main():
 
     if not rows:
         sys.exit("本が1冊も入っていません。")
+
+    if args.renumber:
+        renumber(BOOKS_CSV, rows)
+        rows = [dict(r) for r in rows]
 
     ids = [(r.get("id") or "").strip() for r in rows]
     dupes = [i for i, n in Counter(ids).items() if n > 1]
