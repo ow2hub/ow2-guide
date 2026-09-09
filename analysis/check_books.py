@@ -81,29 +81,58 @@ def report_content(rows):
 
 
 def renumber(path, rows):
-    """idを b01 から順に振り直す(本を足し引きしたあとに使う)."""
-    existing = sorted(BOOKS_DIR.glob("b*.md")) if BOOKS_DIR.exists() else []
-    if existing:
-        sys.exit(f"books/ に {len(existing)}個 のファイルが残っています。\n"
-                 "先に前の回を退避してください:\n"
-                 "  python3 new_round.py --archive <名前>")
+    """idを b01 から順に振り直す(本を足し引きしたあとに使う).
+
+    books/ の中のファイルも一緒に付け替える。csv から消した本のファイルは
+    消さずに books/_removed_bNN.md に退避する(あとから戻せるように)。
+    """
+    kept_old = {(r.get("id") or "").strip() for r in rows}
+
+    # csv から消えた本のファイルを先にどかす(付け替え先とぶつかるため)
+    removed = []
+    if BOOKS_DIR.exists():
+        for f in sorted(BOOKS_DIR.glob("b*.md")):
+            if f.stem not in kept_old:
+                f.rename(BOOKS_DIR / f"_removed_{f.stem}.md")
+                removed.append(f.stem)
+
     changed = []
     for i, r in enumerate(rows, 1):
         new_id = f"b{i:02d}"
-        if (r.get("id") or "").strip() != new_id:
-            changed.append(f"{r.get('id')} -> {new_id}")
+        old_id = (r.get("id") or "").strip()
+        if old_id != new_id:
+            changed.append((old_id, new_id))
         r["id"] = new_id
-    if not changed:
+
+    if not changed and not removed:
         print("idはすでに連番です。直すところはありません。")
         return
+
+    # いったん一時名にしてから戻す(付け替え先が埋まっていても壊れない)
+    if BOOKS_DIR.exists():
+        staged = []
+        for old_id, new_id in changed:
+            src = BOOKS_DIR / f"{old_id}.md"
+            if src.exists():
+                tmp = BOOKS_DIR / f"__tmp_{old_id}.md"
+                src.rename(tmp)
+                staged.append((tmp, BOOKS_DIR / f"{new_id}.md"))
+        for tmp, dst in staged:
+            tmp.rename(dst)
     cols = ["id", "title", "author", "year", "origin"]
     with path.open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
         w.writerows(rows)
-    print(f"idを振り直しました({len(changed)}件):")
-    for c in changed:
-        print(f"  {c}")
+    if removed:
+        print(f"csvから消えた本のファイルを退避しました: "
+              + ", ".join(f"_removed_{r}.md" for r in removed))
+    if changed:
+        print(f"idを振り直しました({len(changed)}件):")
+        for old_id, new_id in changed:
+            print(f"  {old_id} -> {new_id}")
+    else:
+        print("残った本のidは、すでに連番でした。")
 
 
 def init_book_files(rows):
