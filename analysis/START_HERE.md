@@ -214,6 +214,20 @@ python3 aggregate.py
 
 ---
 
+## 次の回を始めるとき
+
+`analysis/` は1回ぶんの作業場所しか持っていないので、次のジャンルに移る前に
+今回のデータを退避する。移すだけなので、あとから見返せる。
+
+```bash
+python3 new_round.py --archive ep2    # archive/ep2/ へ移して、作業場所を空にする
+python3 new_round.py --list           # 退避済みのものを一覧する
+```
+
+退避したら、また STEP 1 から始める。
+
+---
+
 ## つまずいたら
 
 | 症状 | 対処 |

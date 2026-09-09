@@ -9,3 +9,6 @@ prompts_out/
 report.md
 video_numbers.py
 dummy/
+
+# 終わった回は証跡として残す(new_round.py が作る)
+!archive/**
